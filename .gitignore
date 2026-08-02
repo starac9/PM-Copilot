@@ -1,0 +1,22 @@
+# --- Python / backend ---
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+backend/.pytest_cache/
+.pytest_cache/
+
+# --- Node / frontend ---
+frontend/node_modules/
+frontend/dist/
+
+# --- Secrets & local env (NEVER commit real values; commit .env.example instead) ---
+.env
+backend/.env
+frontend/.env
+
+# --- OS / editor noise ---
+.DS_Store
+*.log
+
+# --- IDE/Agent ---
+.claude/

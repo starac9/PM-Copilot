@@ -1,0 +1,132 @@
+/* Tailwind's three layers. Tailwind replaces these with generated utility classes. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Keyframes referenced from inline styles (the hero mock's equalizer sets per-bar duration
+   and delay inline). Defining them here — rather than only in the Tailwind config — means
+   they're always emitted, even though no `animate-equalize` utility class is scanned. */
+@keyframes equalize {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@layer base {
+  body {
+    @apply text-slate-800 antialiased dark:text-slate-200;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    /* A clean, warm off-white canvas — matching the landing page. */
+    background-color: #fafaf7;
+  }
+
+  /* Dark backdrop: the same deep ink used on the landing. */
+  .dark body {
+    background-color: #0a0d14;
+  }
+
+  /* Nicer default focus ring color across the app. */
+  * {
+    @apply [--tw-ring-color:theme(colors.brand.200)];
+  }
+}
+
+@layer components {
+  /* Reusable input style so every form field looks consistent. */
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white/80 px-3.5 py-2.5 text-sm
+      text-slate-800 shadow-sm backdrop-blur transition
+      placeholder:text-slate-400
+      focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100
+      dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100
+      dark:placeholder:text-slate-500 dark:focus:border-brand-500 dark:focus:ring-brand-500/20;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  /* Card surface used for projects, PRD sections, and forms. */
+  .card {
+    @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-soft backdrop-blur
+      dark:border-slate-800 dark:bg-slate-900/70;
+  }
+
+  /* An interactive card that lifts on hover (project tiles, etc.). */
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift
+      dark:hover:border-brand-500/40;
+  }
+
+  /* Small pill badge. */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Gradient wordmark / headings. */
+  .gradient-text {
+    @apply bg-brand-gradient bg-clip-text text-transparent;
+  }
+
+  /* The brand icon tile — a dark ink square with a green line icon. */
+  .logo-mark {
+    @apply flex items-center justify-center rounded-xl bg-ink text-grass-400;
+  }
+
+  /* Button-look classes for <Link>/<a> elements (the Button.jsx component covers <button>). */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-grass-400 px-4 py-2.5
+      text-sm font-semibold text-ink shadow-sm transition hover:bg-grass-500 active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white
+      px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50
+      dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
+  }
+
+  /* Compact markdown styling for the chat bubble (bold, lists, paragraphs, code). */
+  .chat-md > :first-child {
+    @apply mt-0;
+  }
+  .chat-md > :last-child {
+    @apply mb-0;
+  }
+  .chat-md p {
+    @apply my-2 leading-relaxed;
+  }
+  .chat-md strong {
+    @apply font-semibold text-slate-900 dark:text-white;
+  }
+  .chat-md ul {
+    @apply my-2 list-disc space-y-1 pl-4;
+  }
+  .chat-md ol {
+    @apply my-2 list-decimal space-y-1 pl-4;
+  }
+  .chat-md h1,
+  .chat-md h2,
+  .chat-md h3 {
+    @apply mb-1 mt-3 font-semibold text-slate-900 dark:text-white;
+  }
+  .chat-md a {
+    @apply font-medium text-brand-600 underline dark:text-brand-400;
+  }
+  .chat-md code {
+    @apply rounded bg-slate-200 px-1 py-0.5 text-xs dark:bg-slate-700;
+  }
+
+  /* Semantic text helpers so components can go theme-aware with one class. */
+  .text-heading {
+    @apply text-slate-900 dark:text-white;
+  }
+  .text-body {
+    @apply text-slate-600 dark:text-slate-300;
+  }
+  .text-muted {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+}

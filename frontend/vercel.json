@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": "SPA rewrite: send every path to index.html so client-side routes like /projects/5 deep-link and refresh correctly (React Router handles them in the browser).",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

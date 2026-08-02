@@ -1,0 +1,45 @@
+# Render Blueprint for the PM Copilot backend (free tier).
+#
+# Deploy: in the Render dashboard choose "New +" → "Blueprint", point it at this repo, and
+# set the root directory to `backend`. Render reads this file, provisions the service, and
+# prompts for the secret env vars marked `sync: false` below.
+#
+# Notes:
+#   * $PORT is provided by Render — uvicorn must bind to it (see startCommand).
+#   * Migrations run at startup (`alembic upgrade head && uvicorn ...`). It's idempotent and
+#     works on the FREE plan (Render's dedicated preDeployCommand needs a paid instance).
+#   * The database itself is Neon (external), so we do NOT declare a Render database here;
+#     we just pass its connection string as DATABASE_URL.
+services:
+  - type: web
+    name: pm-copilot-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: LLM_PROVIDER
+        value: groq          # "groq" (free, no card) or "gemini"
+      - key: GROQ_API_KEY
+        sync: false          # secret — free key from https://console.groq.com
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: EMBED_PROVIDER
+        value: local         # fastembed, runs in-process (no key)
+      - key: DATABASE_URL
+        sync: false          # your Neon connection string (postgresql+psycopg://...)
+      - key: JWT_SECRET
+        sync: false          # generate with: openssl rand -hex 32
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: FRONTEND_URL
+        sync: false          # your Vercel URL, e.g. https://pm-copilot.vercel.app
+      - key: GOOGLE_CLIENT_ID
+        sync: false          # your Google OAuth Web Client ID (enables /auth/google)
+      # Only needed if you switch LLM_PROVIDER/EMBED_PROVIDER to gemini:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
