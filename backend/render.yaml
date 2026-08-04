@@ -20,6 +20,8 @@ services:
     startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: LLM_PROVIDER
         value: groq          # "groq" (free, no card) or "gemini"
       - key: GROQ_API_KEY
