@@ -23,10 +23,19 @@ api.interceptors.request.use((config) => {
 
 // Response interceptor: if the server ever says 401, the token is dead — clear it and
 // send the user back to login. We do this once here instead of in every component.
+//
+// IMPORTANT: Do NOT redirect on auth-endpoint 401s (login/register/google) — those are
+// expected "wrong credentials" failures, not expired sessions. Redirecting there would
+// reload the page before the error toast can fire.
+const AUTH_PATHS = ["/auth/login", "/auth/register", "/auth/google"];
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const isAuthEndpoint = AUTH_PATHS.some((p) =>
+      error.config?.url?.includes(p)
+    );
+    if (error.response && error.response.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem(TOKEN_KEY);
       // Full reload to /login clears any stale in-memory state cleanly.
       if (window.location.pathname !== "/login") {

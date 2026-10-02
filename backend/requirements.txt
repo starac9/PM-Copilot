@@ -1,34 +1,34 @@
 # --- Web framework ---
-fastapi==0.115.6           # the API framework (async, auto-docs at /docs)
-uvicorn[standard]==0.34.0  # ASGI server that actually runs FastAPI
+fastapi>=0.115.6           # the API framework (async, auto-docs at /docs)
+uvicorn[standard]>=0.34.0  # ASGI server that actually runs FastAPI
 
 # --- Database ---
-SQLAlchemy==2.0.36         # ORM: lets us use Python classes instead of raw SQL
-alembic==1.14.0            # database migrations (versioned schema changes)
-psycopg[binary]==3.2.9     # PostgreSQL driver (psycopg3) — bundles libpq, no system Postgres needed; works with Neon
-pgvector==0.3.6            # SQLAlchemy Vector type — enabled now, used in Phase 4 (RAG)
+SQLAlchemy>=2.0.36         # ORM: lets us use Python classes instead of raw SQL
+alembic>=1.14.0            # database migrations (versioned schema changes)
+psycopg[binary]>=3.2.10    # PostgreSQL driver (psycopg3) — bundles libpq; 3.2.9 not available for Python 3.14+
+pgvector>=0.3.6            # SQLAlchemy Vector type — enabled now, used in Phase 4 (RAG)
 
 # --- Validation / settings ---
-pydantic==2.10.4           # request/response validation + typed models
-pydantic-settings==2.7.1   # loads settings from .env into a typed Settings object
-email-validator==2.2.0     # required so pydantic's EmailStr can validate emails
+pydantic>=2.10.4           # request/response validation + typed models
+pydantic-settings>=2.7.1   # loads settings from .env into a typed Settings object
+email-validator>=2.2.0     # required so pydantic's EmailStr can validate emails
 
 # --- Auth ---
-python-jose[cryptography]==3.3.0  # create + verify JWT access tokens
-bcrypt==4.2.1                     # hash passwords (never store plain text)
-google-auth==2.50.0              # verify Google Sign-In ID tokens (/auth/google)
-requests==2.32.5                 # HTTP transport used by google-auth token verification
+python-jose[cryptography]>=3.3.0  # create + verify JWT access tokens
+bcrypt>=4.2.1                     # hash passwords (never store plain text)
+google-auth>=2.50.0              # verify Google Sign-In ID tokens (/auth/google)
+requests>=2.32.5                 # HTTP transport used by google-auth token verification
 
 # --- AI: text generation (provider-isolated; pick one via LLM_PROVIDER) ---
-google-genai==0.8.0        # Google Gemini SDK (LLM_PROVIDER=gemini)
-groq==1.0.0                # Groq SDK — free API, no credit card (LLM_PROVIDER=groq)
+google-genai>=0.8.0        # Google Gemini SDK (LLM_PROVIDER=gemini)
+groq>=1.0.0                # Groq SDK — free API, no credit card (LLM_PROVIDER=groq)
 
 # --- RAG (Phase 4) ---
-langchain-text-splitters==0.3.4  # RecursiveCharacterTextSplitter for chunking documents
-pypdf==5.1.0                     # extract text from uploaded PDF files
-python-multipart==0.0.20         # required by FastAPI to parse file uploads (multipart/form-data)
-fastembed==0.7.4                 # local embeddings (EMBED_PROVIDER=local) — offline, no key
+langchain-text-splitters>=0.3.4  # RecursiveCharacterTextSplitter for chunking documents
+pypdf>=5.1.0                     # extract text from uploaded PDF files
+python-multipart>=0.0.20         # required by FastAPI to parse file uploads (multipart/form-data)
+fastembed>=0.7.4                 # local embeddings (EMBED_PROVIDER=local) — offline, no key
 
 # --- Testing ---
-pytest==8.3.4              # test runner
-httpx==0.28.1              # required by FastAPI's TestClient to make fake requests
+pytest>=8.3.4              # test runner
+httpx>=0.28.1              # required by FastAPI's TestClient to make fake requests

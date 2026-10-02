@@ -20,6 +20,7 @@ import {
 import { apiErrorMessage } from "../api/client.js";
 import ArtifactModal from "../components/ArtifactModal.jsx";
 import Button from "../components/Button.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 import ProjectHeader from "../components/ProjectHeader.jsx";
 import { Skeleton } from "../components/Skeleton.jsx";
 import { useGenerateArtifact, useWorkspace } from "../hooks/useArtifacts.js";
@@ -60,7 +61,7 @@ export default function WorkspaceView() {
     }
   }
 
-  const openLabel = data?.catalog.find((c) => c.key === openType)?.label;
+  const openLabel = data?.catalog?.find((c) => c.key === openType)?.label;
 
   return (
     <div className="space-y-6">

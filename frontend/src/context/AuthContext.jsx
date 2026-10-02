@@ -1,7 +1,7 @@
 // Auth state shared across the whole app via React Context.
 // It holds the current user + token and exposes login/register/logout helpers, so any
 // component can call `useAuth()` instead of passing props down manually.
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import api, { TOKEN_KEY } from "../api/client.js";
 
@@ -14,48 +14,64 @@ export function AuthProvider({ children }) {
   // loading covers the initial "do we have a saved session?" check on first render.
   const [loading, setLoading] = useState(true);
 
-  // On first load, if we have a token, restore the cached user so a refresh keeps you
-  // logged in. (We cache the user object in localStorage alongside the token.)
+  // On mount only: restore the cached user from localStorage so a page refresh keeps you
+  // logged in without a round-trip to the server. We use [] so this runs exactly once —
+  // re-running on every token change would create a state-update loop.
   useEffect(() => {
+    const savedToken = localStorage.getItem(TOKEN_KEY);
     const savedUser = localStorage.getItem("pmcopilot_user");
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (savedToken && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        // Corrupted stored user — clear it so the user is prompted to log in again.
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem("pmcopilot_user");
+        setToken(null);
+      }
     }
     setLoading(false);
-  }, [token]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared logic for both register and login, which return the same {access_token, user}.
-  async function authenticate(path, email, password) {
+  const authenticate = useCallback(async (path, email, password) => {
     const { data } = await api.post(path, { email, password });
     localStorage.setItem(TOKEN_KEY, data.access_token);
     localStorage.setItem("pmcopilot_user", JSON.stringify(data.user));
     setToken(data.access_token);
     setUser(data.user);
     return data.user;
-  }
+  }, []);
 
-  const login = (email, password) => authenticate("/auth/login", email, password);
-  const register = (email, password) => authenticate("/auth/register", email, password);
+  const login = useCallback(
+    (email, password) => authenticate("/auth/login", email, password),
+    [authenticate]
+  );
+  const register = useCallback(
+    (email, password) => authenticate("/auth/register", email, password),
+    [authenticate]
+  );
 
   // Google Sign-In: exchange the Google ID-token credential for our own JWT + user, then
   // store them exactly like email/password login.
-  async function loginWithGoogle(credential) {
+  const loginWithGoogle = useCallback(async (credential) => {
     const { data } = await api.post("/auth/google", { credential });
     localStorage.setItem(TOKEN_KEY, data.access_token);
     localStorage.setItem("pmcopilot_user", JSON.stringify(data.user));
     setToken(data.access_token);
     setUser(data.user);
     return data.user;
-  }
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem("pmcopilot_user");
     setToken(null);
     setUser(null);
-  }
+  }, []);
 
   // useMemo avoids recreating the value object on every render (perf hygiene).
+  // With stable useCallback refs above, this only re-runs when user/token/loading change.
   const value = useMemo(
     () => ({
       user,
@@ -67,7 +83,7 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
     }),
-    [user, token, loading]
+    [user, token, loading, login, register, loginWithGoogle, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
