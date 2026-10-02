@@ -27,7 +27,7 @@ services:
       - key: GROQ_API_KEY
         sync: false          # secret — free key from https://console.groq.com
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
       - key: EMBED_PROVIDER
         value: local         # fastembed, runs in-process (no key)
       - key: DATABASE_URL

@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3.8-flash"
 
     # Groq (optional unless LLM_PROVIDER=groq). Free key at https://console.groq.com.
+    # The Llama models are Enterprise-only on Groq now (free keys get 404); gpt-oss-120b is
+    # the free-tier text model and supports JSON mode.
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
 
     # --- AI: embeddings (RAG / Phase 4) ---
     # EMBED_PROVIDER picks how document chunks are embedded for vector search.

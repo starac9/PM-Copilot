@@ -120,12 +120,16 @@ def _generate_groq(prompt, schema, system_instruction: str, model: str) -> str:
             f"{json.dumps(schema.model_json_schema())}"
         )
         extra["response_format"] = {"type": "json_object"}
+    if model.startswith("openai/gpt-oss"):
+        # Reasoning model: its hidden reasoning tokens count against max_tokens, so keep it
+        # brief or a short chat reply can come back empty.
+        extra["reasoning_effort"] = "low"
     messages = prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}]
     response = _get_groq().chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": system}, *messages],
         temperature=0.7 if schema is not None else 0.5,
-        max_tokens=8192 if schema is not None else 600,
+        max_tokens=8192 if schema is not None else 2048,
         **extra,
     )
     content = response.choices[0].message.content

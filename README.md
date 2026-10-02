@@ -52,7 +52,7 @@ never import an AI SDK.
 | Frontend  | React (Vite), Tailwind CSS, React Router, axios |
 | Backend   | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2 |
 | Database  | PostgreSQL + pgvector (Neon serverless) |
-| AI (text) | Provider-isolated: **Groq** (`llama-3.3-70b`, free) or **Gemini** (`gemini-3.8-flash`) |
+| AI (text) | Provider-isolated: **Groq** (`openai/gpt-oss-120b`, free) or **Gemini** (`gemini-3.8-flash`) |
 | AI (embed)| **fastembed** local `bge-small-en` (free, offline) or Gemini `text-embedding-004` |
 | Auth      | JWT (email + password), bcrypt password hashing |
 
@@ -98,7 +98,7 @@ uvicorn app.main:app --reload        # http://localhost:8000  (docs at /docs)
 ```
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_your_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 EMBED_PROVIDER=local
 DATABASE_URL=postgresql+psycopg://USER:PASS@HOST/DB?sslmode=require
 JWT_SECRET=run: openssl rand -hex 32
