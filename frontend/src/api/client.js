@@ -5,7 +5,7 @@
 import axios from "axios";
 
 // import.meta.env.VITE_API_URL is injected by Vite at build time from the .env file.
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const api = axios.create({ baseURL });
 
@@ -28,7 +28,9 @@ api.interceptors.request.use((config) => {
 // IMPORTANT: Do NOT redirect on auth-endpoint 401s (login/register/google) — those are
 // expected "wrong credentials" failures, not expired sessions. Redirecting there would
 // reload the page before the error toast can fire.
-const AUTH_PATHS = ["/auth/login", "/auth/register", "/auth/google"];
+// /auth/refresh too: it runs in the background on every visit (even on public pages), and
+// AuthContext handles its 401 by quietly signing out — no reload needed.
+const AUTH_PATHS = ["/auth/login", "/auth/register", "/auth/google", "/auth/refresh"];
 
 api.interceptors.response.use(
   (response) => response,

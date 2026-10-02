@@ -92,7 +92,7 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
         </div>
 
         <div className="relative font-mono text-[11px] uppercase tracking-wider text-white/40">
-          Built with FastAPI · React · Groq — a portfolio project.
+          Built with FastAPI · React · Gemini — a portfolio project.
         </div>
       </div>
 

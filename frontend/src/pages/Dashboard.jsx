@@ -6,8 +6,8 @@
 //
 // This page is rendered INSIDE ProtectedRoute, which already provides the platform nav and the
 // centered page container — so here we only render the page's own content.
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowRight, FileText, Plus, Trash2 } from "lucide-react";
 
 import { apiErrorMessage } from "../api/client.js";
@@ -26,7 +26,20 @@ import { useToast } from "../lib/toast.js";
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 export default function Dashboard() {
-  const [creating, setCreating] = useState(false); // is the "new project" form open?
+  const [params, setParams] = useSearchParams();
+  // ?new=1 (from a Learn "Practice it" link) opens the form, optionally pre-filled.
+  const [creating, setCreating] = useState(params.get("new") === "1"); // is the form open?
+  const [prefill] = useState(() => ({
+    title: params.get("title") || "",
+    description: params.get("description") || "",
+    target_audience: params.get("audience") || "",
+  }));
+
+  // Drop the query once read, so a refresh doesn't reopen the form.
+  useEffect(() => {
+    if (params.get("new")) setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -87,6 +100,7 @@ export default function Dashboard() {
       {/* The create form appears in place, above the list. */}
       {creating && (
         <ProjectForm
+          defaultValues={prefill}
           onSubmit={handleCreate}
           onCancel={() => setCreating(false)}
           submitting={createProject.isPending}

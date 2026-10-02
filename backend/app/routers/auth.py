@@ -1,8 +1,8 @@
 """
-Auth routes: register + login.
+Auth routes: register, login, Google sign-in, session refresh, and password change.
 
-Both endpoints return the same `Token` response (a JWT + basic user info) so the
-frontend can log the user in immediately after registering.
+Register/login/google/refresh all return the same `Token` response (a JWT + basic user
+info) so the frontend handles every way of getting a session identically.
 """
 
 import secrets
@@ -15,8 +15,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, verify_password
+from app.deps import get_current_user
 from app.models.user import User
-from app.schemas.user import GoogleAuthIn, Token, UserCreate, UserOut
+from app.schemas.user import GoogleAuthIn, PasswordChange, Token, UserCreate, UserOut
 
 # prefix="/auth" means every route here starts with /auth (e.g. /auth/login).
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -116,3 +117,35 @@ def login(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
 
     token = create_access_token(subject=user.id)
     return Token(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.post("/refresh", response_model=Token)
+def refresh(user: User = Depends(get_current_user)) -> Token:
+    """Swap a still-valid token for a fresh one (sliding session).
+
+    The frontend calls this on every visit, so people who use the app regularly never get
+    logged out; only JWT_EXPIRE_MINUTES of inactivity ends a session.
+    """
+    token = create_access_token(subject=user.id)
+    return Token(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.put("/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: PasswordChange,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Change the signed-in user's password (requires the current one).
+
+    Accounts created with Google have a random password nobody knows, so for them this
+    returns 400 with a hint instead of a confusing "wrong password".
+    """
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect. (Signed up with Google? Your account has no "
+            "password — keep using Google sign-in.)",
+        )
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()

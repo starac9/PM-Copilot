@@ -16,6 +16,13 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=6, description="At least 6 characters.")
 
 
+class PasswordChange(BaseModel):
+    """Body for changing the signed-in user's password."""
+
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=6, description="At least 6 characters.")
+
+
 class GoogleAuthIn(BaseModel):
     """Body for Google Sign-In: the ID-token credential returned by Google in the browser."""
 

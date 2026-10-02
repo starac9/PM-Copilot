@@ -1,5 +1,5 @@
 // A floating FAQ chatbot in the bottom-right corner. It talks to the public /chat endpoint,
-// which is backed by Groq — so it can answer questions about PM Copilot and general product
+// which is backed by the app's LLM service (Gemini, with Groq as a fallback) — so it can answer questions about PM Copilot and general product
 // questions in real time. Conversation state lives here; we send the recent history each turn.
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";

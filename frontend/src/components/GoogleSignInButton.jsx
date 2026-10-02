@@ -3,12 +3,13 @@
 // Renders nothing when Google isn't configured (no VITE_GOOGLE_CLIENT_ID), so the auth
 // pages degrade gracefully to email/password only.
 import { GoogleLogin } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { apiErrorMessage } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { GOOGLE_CLIENT_ID } from "../context/GoogleProvider.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
+import { afterAuthPath } from "../lib/redirect.js";
 import { useToast } from "../lib/toast.js";
 
 export default function GoogleSignInButton() {
@@ -16,6 +17,7 @@ export default function GoogleSignInButton() {
   const { isDark } = useTheme();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (!GOOGLE_CLIENT_ID) return null; // Google sign-in not configured — hide entirely.
 
@@ -24,7 +26,7 @@ export default function GoogleSignInButton() {
       await loginWithGoogle(credentialResponse.credential);
       toast.dismiss();
       toast.success("Signed in with Google.");
-      navigate("/dashboard");
+      navigate(afterAuthPath(location), { replace: true });
     } catch (err) {
       toast.error(apiErrorMessage(err, "Google sign-in failed."));
     }

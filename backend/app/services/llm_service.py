@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterator
 
 from app.core.config import Settings, settings
 from app.schemas.artifact import ArtifactContent
@@ -213,7 +214,9 @@ def _call_with_fallback(call, what: str):
                 return call(provider, model)
             except Exception as exc:  # noqa: BLE001 - classify, then retry or fall through
                 code = _status_code(exc)
-                logger.warning("%s via %s/%s attempt %d failed: %r", what, provider, model, attempt + 1, exc)
+                logger.warning(
+                    "%s via %s/%s attempt %d failed: %r", what, provider, model, attempt + 1, exc
+                )
                 failures.append(_describe(provider, model, exc))
                 # Any error status from the provider (bad key, unknown model, quota, overload)
                 # won't clear on an immediate retry of the SAME model — move to the next
@@ -370,12 +373,7 @@ def mentor_reply(messages: list[dict], topic: str = "") -> str:
     Raises:
         LLMError: if every provider/model candidate fails.
     """
-    system = MENTOR_SYSTEM_INSTRUCTION
-    if topic.strip():
-        system += (
-            f"\n\nThe learner is currently studying the lesson \"{topic.strip()}\". Anchor "
-            "your answer to that topic when the question relates to it."
-        )
+    system = _mentor_system(topic)
 
     def call(provider: str, model: str) -> str:
         if provider == "groq":
@@ -384,3 +382,100 @@ def mentor_reply(messages: list[dict], topic: str = "") -> str:
         return _CALLERS["gemini"](f"{history}\n\nassistant:", None, system, model).strip()
 
     return _call_with_fallback(call, "Mentor")
+
+
+# ---------------------------------------------------------------------------
+# Streaming (PM AI Chat): tokens are sent to the browser as they're generated.
+# ---------------------------------------------------------------------------
+
+
+def _stream_gemini(prompt: str, system: str, model: str) -> Iterator[str]:
+    from google.genai import types
+
+    stream = _get_gemini().models.generate_content_stream(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(system_instruction=system, temperature=0.5),
+    )
+    for chunk in stream:
+        if chunk.text:
+            yield chunk.text
+
+
+def _stream_groq(messages: list[dict], system: str, model: str) -> Iterator[str]:
+    extra = {"reasoning_effort": "low"} if model.startswith("openai/gpt-oss") else {}
+    stream = _get_groq().chat.completions.create(
+        model=model,
+        messages=[{"role": "system", "content": system}, *messages],
+        temperature=0.5,
+        max_tokens=4096,
+        stream=True,
+        **extra,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content if chunk.choices else None
+        if delta:
+            yield delta
+
+
+_STREAMERS = {"gemini": _stream_gemini, "groq": _stream_groq}
+
+
+def _stream_with_fallback(make_stream, what: str) -> Iterator[str]:
+    """Start a stream on the first (provider, model) candidate that produces a token.
+
+    Fallback is only possible BEFORE the first token: once text has reached the browser we
+    can't switch models mid-answer. So we pull the first chunk eagerly — any provider error
+    (quota, overload, bad key) surfaces here and we move to the next candidate — then hand
+    back an iterator that replays that chunk followed by the rest.
+    """
+    failures: list[str] = []
+    keys = {"gemini": settings.GEMINI_API_KEY, "groq": settings.GROQ_API_KEY}
+    for provider, model in _candidates():
+        if not keys[provider]:
+            failures.append(f"{provider}: no API key set ({provider.upper()}_API_KEY)")
+            continue
+        try:
+            chunks = iter(make_stream(provider, model))
+            first = next(chunks)
+        except StopIteration:
+            failures.append(f"{provider}/{model}: empty response")
+            continue
+        except Exception as exc:  # noqa: BLE001 - classify and fall through
+            logger.warning("%s stream via %s/%s failed: %r", what, provider, model, exc)
+            failures.append(_describe(provider, model, exc))
+            continue
+
+        def replay(first=first, chunks=chunks):
+            yield first
+            yield from chunks
+
+        return replay()
+    raise LLMError("; ".join(dict.fromkeys(failures)) or "no LLM provider configured")
+
+
+def _mentor_system(topic: str) -> str:
+    system = MENTOR_SYSTEM_INSTRUCTION
+    if topic.strip():
+        system += (
+            f"\n\nThe learner is currently studying the lesson \"{topic.strip()}\". Anchor "
+            "your answer to that topic when the question relates to it."
+        )
+    return system
+
+
+def mentor_stream(messages: list[dict], topic: str = "") -> Iterator[str]:
+    """Streaming variant of `mentor_reply`: yields Markdown text chunks as they arrive.
+
+    Raises:
+        LLMError: if no provider/model could start a stream (raised before any chunk).
+    """
+    system = _mentor_system(topic)
+
+    def make_stream(provider: str, model: str) -> Iterator[str]:
+        if provider == "groq":
+            return _STREAMERS["groq"](messages, system, model)
+        history = "\n\n".join(f"{m['role']}: {m['content']}" for m in messages)
+        return _STREAMERS["gemini"](f"{history}\n\nassistant:", system, model)
+
+    return _stream_with_fallback(make_stream, "Mentor")

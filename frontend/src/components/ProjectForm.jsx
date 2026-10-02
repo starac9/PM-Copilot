@@ -8,14 +8,14 @@ import { Lightbulb } from "lucide-react";
 import { projectFormSchema } from "../lib/schemas.js";
 import Button from "./Button.jsx";
 
-export default function ProjectForm({ onSubmit, onCancel, submitting }) {
+export default function ProjectForm({ onSubmit, onCancel, submitting, defaultValues }) {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(projectFormSchema),
-    defaultValues: { title: "", description: "", target_audience: "" },
+    defaultValues: { title: "", description: "", target_audience: "", ...defaultValues },
   });
 
   return (

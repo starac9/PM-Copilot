@@ -41,6 +41,16 @@ _TestSession = sessionmaker(bind=_engine, autoflush=False, autocommit=False)
 
 
 @pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """Rate-limit counters are process-global; reset them so tests don't affect each other."""
+    from app.core.rate_limit import limiter
+
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+@pytest.fixture(autouse=True)
 def _fresh_db():
     """Create all tables before each test and drop them after, so tests never leak state."""
     Base.metadata.create_all(bind=_engine)

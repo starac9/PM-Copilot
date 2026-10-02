@@ -57,7 +57,9 @@ class Settings(BaseSettings):
     # --- Auth ---
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"        # symmetric signing; fine for a single backend
-    JWT_EXPIRE_MINUTES: int = 1440       # 24 hours
+    # 7 days. Sessions slide: the frontend calls /auth/refresh on each visit for a fresh token,
+    # so active users stay signed in and only a week of inactivity logs you out.
+    JWT_EXPIRE_MINUTES: int = 10080
 
     # Google Sign-In (optional). The OAuth 2.0 Web Client ID from Google Cloud Console.
     # When set, /auth/google verifies Google ID tokens against it. Leave blank to disable.
@@ -65,8 +67,24 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     # The browser blocks requests from other origins unless the server allows them.
-    # We only allow our own frontend.
+    # We only allow our own frontend(s): a comma-separated list of exact origins, plus an
+    # optional regex for preview deploys (e.g. ^https://pm-copilot-ai-[a-z0-9-]+\.vercel\.app$).
     FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_ORIGIN_REGEX: str = ""
+
+    # --- Abuse protection (AI calls cost quota) ---
+    # Public chat endpoints are limited per client IP; generation endpoints per user.
+    CHAT_RATE_LIMIT_PER_HOUR: int = 30
+    GENERATION_RATE_LIMIT_PER_HOUR: int = 40
+
+    # --- Error tracking (optional) ---
+    # Set to a Sentry DSN to report unhandled backend errors. Blank = disabled.
+    SENTRY_DSN: str = ""
+
+    @property
+    def frontend_origins(self) -> list[str]:
+        """FRONTEND_URL split into exact origins (trailing slashes would never match)."""
+        return [o.strip().rstrip("/") for o in self.FRONTEND_URL.split(",") if o.strip()]
 
     # Tells pydantic-settings to load values from a local .env file if present.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

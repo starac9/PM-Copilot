@@ -34,6 +34,28 @@ export function AuthProvider({ children }) {
       }
     }
     setLoading(false);
+
+    // Sliding session: swap the saved token for a fresh one in the background, so people who
+    // keep using the app are never logged out. A 401 means it already expired → sign out
+    // quietly. Network errors keep the session (the backend may just be waking up).
+    if (savedToken) {
+      api
+        .post("/auth/refresh")
+        .then(({ data }) => {
+          localStorage.setItem(TOKEN_KEY, data.access_token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          setToken(data.access_token);
+          setUser(data.user);
+        })
+        .catch((err) => {
+          if (err.response?.status === 401) {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            setToken(null);
+            setUser(null);
+          }
+        });
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist a fresh session ({access_token, user}) returned by any of the auth endpoints.
@@ -77,9 +99,21 @@ export function AuthProvider({ children }) {
     [startSession]
   );
 
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    await api.put("/auth/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    // Learning state belongs to the account once signed in (it's synced server-side), so
+    // don't leave it behind for whoever uses this browser next.
+    localStorage.removeItem("pmcopilot_learn_done");
+    localStorage.removeItem("pmcopilot_mentor_chat");
+    window.dispatchEvent(new Event("pmcopilot:learn-progress"));
     setToken(null);
     setUser(null);
     queryClient.clear();
@@ -96,9 +130,10 @@ export function AuthProvider({ children }) {
       login,
       register,
       loginWithGoogle,
+      changePassword,
       logout,
     }),
-    [user, token, loading, login, register, loginWithGoogle, logout]
+    [user, token, loading, login, register, loginWithGoogle, changePassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -24,6 +24,7 @@ import {
 import Logo from "../components/Logo.jsx";
 import SiteNav from "../components/SiteNav.jsx";
 import Wordmark from "../components/Wordmark.jsx";
+import { baseURL } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { LESSONS, MODULES } from "../learn/curriculum.js";
 
@@ -41,9 +42,10 @@ const CAPABILITIES = [
   { icon: Share2, title: "Export", sub: "jira csv · markdown" },
 ];
 
-const STACK = ["Jira", "Linear", "Notion", "Confluence", "GitHub", "Figma", "Slack", "Trello"];
+// The real stack this app runs on (shown in the marquee).
+const BUILT_WITH = ["FastAPI", "React", "Gemini", "Groq", "PostgreSQL", "pgvector", "Tailwind CSS", "Vercel", "Render"];
 
-const BADGES = ["Free to use", "No credit card", "Exports to Jira", "Grounded in your docs"];
+const BADGES = ["Free to use", "No credit card", "Jira CSV export", "Grounded in your docs"];
 
 // ── Small shared pieces ──────────────────────────────────────────────────────
 
@@ -142,10 +144,10 @@ export default function Landing() {
       {/* ── Stack marquee ────────────────────────────────────────────────── */}
       <section className="border-b border-dashed border-slate-200 py-10 dark:border-slate-800">
         <p className="mb-7 text-center font-mono text-xs uppercase tracking-[0.2em] text-slate-400">
-          Plugs into the tools you already use
+          Built on an open, modern stack
         </p>
         <Marquee>
-          {STACK.map((name, i) => (
+          {BUILT_WITH.map((name, i) => (
             <span key={i} className="px-8 text-2xl font-semibold text-slate-300 dark:text-slate-700">
               {name}
             </span>
@@ -215,7 +217,7 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="mx-auto max-w-7xl px-6 py-16">
+      <footer className="mx-auto max-w-7xl px-6 pb-28 pt-16">
         <div className="grid gap-10 md:grid-cols-2">
           <div>
             <Wordmark />
@@ -239,14 +241,11 @@ export default function Landing() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-dashed border-slate-200 pt-6 dark:border-slate-800 sm:flex-row">
           <span className="font-mono text-xs text-slate-400">© 2026 PM Copilot · A portfolio project</span>
-          <span className="flex items-center gap-2 font-mono text-xs text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-grass-400" />
-            All systems operational
-          </span>
+          <ApiStatus />
         </div>
       </footer>
 
-      {/* Floating Groq-powered FAQ assistant (lazy-loaded). */}
+      {/* Floating AI FAQ assistant (lazy-loaded). */}
       <Suspense fallback={null}>
         <ChatWidget />
       </Suspense>
@@ -255,6 +254,36 @@ export default function Landing() {
 }
 
 // ── Section building blocks ──────────────────────────────────────────────────
+
+// A real status light: pings the backend's /health. Free hosting sleeps when idle, so a slow
+// first answer shows "waking up" rather than a false "down".
+function ApiStatus() {
+  const [state, setState] = useState("checking"); // checking | up | waking | down
+  useEffect(() => {
+    let cancelled = false;
+    const slow = setTimeout(() => !cancelled && setState((s) => (s === "checking" ? "waking" : s)), 3000);
+    fetch(`${baseURL}/health`)
+      .then((r) => !cancelled && setState(r.ok ? "up" : "down"))
+      .catch(() => !cancelled && setState("down"))
+      .finally(() => clearTimeout(slow));
+    return () => {
+      cancelled = true;
+      clearTimeout(slow);
+    };
+  }, []);
+  const look = {
+    checking: ["bg-slate-300 dark:bg-slate-600", "Checking API status…"],
+    waking: ["animate-pulse bg-amber-400", "API waking up (free hosting)…"],
+    up: ["bg-grass-400", "API online"],
+    down: ["bg-red-400", "API unreachable"],
+  }[state];
+  return (
+    <span className="flex items-center gap-2 font-mono text-xs text-slate-400" role="status">
+      <span className={`h-2 w-2 rounded-full ${look[0]}`} />
+      {look[1]}
+    </span>
+  );
+}
 
 // The three ways into the platform, each a card with a tiny live-looking preview.
 function Pillars() {
@@ -464,9 +493,9 @@ const GRID_BG = {
   backgroundSize: "22px 22px",
 };
 
-// Hero: a genuinely LIVE generation stream. It cycles through example ideas, streaming each
-// copilot response character-by-character (a typewriter effect) while the equalizer pulses —
-// so the panel reads as a real, working demo rather than a frozen screenshot.
+// Hero: an animated example of what generation looks like. It cycles through sample ideas,
+// typing each response character-by-character while the equalizer pulses. It's labelled
+// "demo" — the real thing is one click away in the workspace and PM AI Chat.
 // Each demo streams a DIFFERENT PM artifact the copilot produces, so the panel shows the
 // end-to-end breadth (PRD → prioritization → metrics → planning → launch), not just one trick.
 const HERO_DEMOS = [
@@ -531,10 +560,10 @@ function HeroMock() {
       <div className="flex items-center justify-between border-b border-dashed border-slate-200 px-5 py-3 dark:border-slate-800">
         <span className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-ink dark:text-white">
           <span className="h-2 w-2 animate-pulse rounded-full bg-grass-500" />
-          Live generation
+          Example generation
         </span>
         <span className="rounded border border-slate-200 bg-[#FAFAF7] px-2 py-0.5 font-mono text-[11px] text-slate-400 dark:border-slate-800 dark:bg-slate-950">
-          1,240 tok/s
+          demo
         </span>
       </div>
 

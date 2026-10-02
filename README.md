@@ -1,15 +1,18 @@
 # 🧭 PM Copilot
 
+[![CI](https://github.com/starac9/PM-Copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/starac9/PM-Copilot/actions/workflows/ci.yml)
+**Live:** https://pm-copilot-ai.vercel.app
+
 An all-in-one product management platform — **work as a PM, learn the craft, ask the AI**:
 
 - **Workspace** — turn a raw product idea into a structured **PRD**, **user stories** with
   RICE scores, a **sprint roadmap**, PM artifacts (strategy, OKRs, GTM, …), and export
   files — all grounded in your own documents via RAG.
 - **Learn** (`/learn`) — a step-by-step course that teaches product management from
-  scratch (7 modules, 23 lessons), with progress tracking, hands-on practice links into the
-  workspace, and "ask the AI about this lesson" prompts.
-- **PM AI Chat** (`/ask`) — a full-page PM mentor that answers product-management
-  questions with structured, example-driven Markdown.
+  scratch (7 modules, 23 lessons), with a quiz per lesson, progress tracking (synced to your
+  account), hands-on practice links into the workspace, and "ask the AI about this lesson".
+- **PM AI Chat** (`/ask`) — a full-page PM mentor that streams structured, example-driven
+  answers; your conversation is saved to your account.
 
 Built with FastAPI + React + Groq/Gemini.
 
@@ -78,8 +81,11 @@ never import an AI SDK.
 - **Phase 4 — RAG context** ✅ upload PDFs/Markdown → chunk → embed → pgvector retrieval
   injected into PRD/story generation, with a "grounded in N docs" indicator.
 - **Phase 5 — Learning platform** ✅ public `/learn` course (lessons are plain data in
-  `frontend/src/learn/modules/*.js` — add a lesson by adding an object) and `/ask` PM AI
-  Chat backed by `POST /chat/mentor`.
+  `frontend/src/learn/modules/*.js` — add a lesson by adding an object; quizzes live in
+  `learn/quizzes.js`) and `/ask` PM AI Chat streamed from `POST /chat/mentor/stream`.
+- **Phase 6 — Production hardening** ✅ per-IP / per-user rate limits on AI endpoints,
+  Gemini model fallback, sliding 7-day sessions + change password, progress & chat synced
+  to the account, optional Sentry, CI on every push, and a keep-alive ping for Render.
 
 ---
 
@@ -159,8 +165,15 @@ cd backend
 | POST   | `/projects/{id}/documents` | Upload a PDF/Markdown reference doc (chunk + embed). |
 | GET    | `/projects/{id}/documents` | List a project's reference documents. |
 | DELETE | `/projects/{id}/documents/{doc_id}` | Delete a document and its chunks. |
-| POST   | `/chat` | Public FAQ assistant (landing-page widget). |
-| POST   | `/chat/mentor` | Public PM AI Chat: in-depth answers; optional `topic` (lesson title). |
+| POST   | `/auth/refresh` | Exchange a valid token for a fresh one (sliding session). |
+| PUT    | `/auth/password` | Change password (requires the current one). |
+| POST   | `/chat` | Public FAQ assistant (landing-page widget). Rate-limited per IP. |
+| POST   | `/chat/mentor` | Public PM AI Chat, whole answer; optional `topic` (lesson title). |
+| POST   | `/chat/mentor/stream` | Same, streamed as plain-text chunks (used by `/ask`). |
+| GET    | `/me/learn-progress` | Lessons the signed-in user completed. |
+| POST   | `/me/learn-progress/sync` | Merge browser progress into the account (union). |
+| PUT/DELETE | `/me/learn-progress/{slug}` | Mark a lesson complete / not done. |
+| GET/PUT/DELETE | `/me/mentor-chat` | The signed-in user's saved PM AI Chat conversation. |
 
 All `/projects...` routes require the `Authorization: Bearer <token>` header and only ever
 touch data owned by the authenticated user (others' resources return 404).

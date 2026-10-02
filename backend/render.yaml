@@ -23,7 +23,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: LLM_PROVIDER
-        value: groq          # "groq" (free, no card) or "gemini"
+        value: gemini        # "gemini" or "groq" — the other is used as a fallback if it has a key
       - key: GROQ_API_KEY
         sync: false          # secret — free key from https://console.groq.com
       - key: GROQ_MODEL
@@ -35,12 +35,16 @@ services:
       - key: JWT_SECRET
         sync: false          # generate with: openssl rand -hex 32
       - key: JWT_EXPIRE_MINUTES
-        value: "1440"
+        value: "10080"       # 7 days; sessions slide via /auth/refresh
       - key: FRONTEND_URL
-        sync: false          # your Vercel URL, e.g. https://pm-copilot.vercel.app
+        sync: false          # your Vercel URL(s), comma-separated, no trailing slash
+      - key: FRONTEND_ORIGIN_REGEX
+        sync: false          # optional: regex for your Vercel preview deploys
+      - key: SENTRY_DSN
+        sync: false          # optional: Sentry DSN for backend error tracking
       - key: GOOGLE_CLIENT_ID
         sync: false          # your Google OAuth Web Client ID (enables /auth/google)
-      # Only needed if you switch LLM_PROVIDER/EMBED_PROVIDER to gemini:
+      # Gemini (primary). GEMINI_FALLBACK_MODELS defaults to 3.7-flash, 3.5-flash, 3.5-flash-lite.
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

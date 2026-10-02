@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import limit_generation_by_user
 from app.deps import get_current_user
 from app.models.artifact import Artifact
 from app.models.user import User
@@ -66,7 +67,11 @@ def get_workspace(
     return WorkspaceOut(catalog=catalog, generated=generated)
 
 
-@router.post("/{artifact_type}/generate", response_model=ArtifactOut)
+@router.post(
+    "/{artifact_type}/generate",
+    response_model=ArtifactOut,
+    dependencies=[Depends(limit_generation_by_user)],  # AI calls spend quota
+)
 def generate_project_artifact(
     project_id: int,
     artifact_type: str,

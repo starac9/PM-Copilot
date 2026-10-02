@@ -29,3 +29,11 @@ class User(Base):
     projects: Mapped[list["Project"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+
+    # Learning platform: completed lessons and the saved PM AI Chat conversation.
+    learn_progress: Mapped[list["LearnProgress"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    mentor_chat: Mapped["MentorChat"] = relationship(
+        back_populates="user", cascade="all, delete-orphan", uselist=False
+    )

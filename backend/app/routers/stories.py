@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import limit_generation_by_user
 from app.deps import get_current_user
 from app.models.story_set import StorySet
 from app.models.user import User
@@ -27,7 +28,11 @@ from app.services.roadmap_service import build_roadmap
 router = APIRouter(prefix="/projects/{project_id}/stories", tags=["stories"])
 
 
-@router.post("/generate", response_model=StorySetOut)
+@router.post(
+    "/generate",
+    response_model=StorySetOut,
+    dependencies=[Depends(limit_generation_by_user)],  # AI calls spend quota
+)
 def generate_project_stories(
     project_id: int,
     response: Response,

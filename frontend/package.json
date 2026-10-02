@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@react-oauth/google": "^0.13.5",
+    "@sentry/react": "^10.76.0",
     "@tanstack/react-query": "^5.101.2",
     "axios": "^1.7.7",
     "lucide-react": "^1.25.0",

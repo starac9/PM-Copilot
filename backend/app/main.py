@@ -9,20 +9,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import artifacts, auth, chat, documents, export, prd, projects, stories
+from app.routers import artifacts, auth, chat, documents, export, me, prd, projects, stories
+
+# Optional error tracking: only active when SENTRY_DSN is set, so local dev and tests never
+# send anything anywhere.
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.0, send_default_pii=False)
 
 app = FastAPI(
     title="PM Copilot API",
-    description="Turn product ideas into PRDs, user stories, and roadmaps with Gemini.",
+    description="All-in-one PM platform: AI workspace, PM course, and PM AI Chat.",
     version="0.1.0",
 )
 
 # CORS: browsers block cross-origin API calls unless the server opts in. We allow ONLY
-# our frontend's origin (from the FRONTEND_URL env var) — not "*" — so random sites
-# can't call the API with a user's credentials.
+# our frontend's origins (FRONTEND_URL, comma-separated, plus an optional preview-deploy
+# regex) — not "*" — so random sites can't call the API with a user's credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=settings.frontend_origins,
+    allow_origin_regex=settings.FRONTEND_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,6 +48,7 @@ app.include_router(export.router)
 app.include_router(documents.router)
 app.include_router(artifacts.router)
 app.include_router(chat.router)
+app.include_router(me.router)
 
 
 @app.get("/health", tags=["health"])

@@ -10,6 +10,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Spinner from "./components/Spinner.jsx";
+import { LearnProgressSync } from "./learn/useLearnProgress.js";
 
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
@@ -22,6 +23,7 @@ const WorkspaceView = lazy(() => import("./pages/WorkspaceView.jsx"));
 const LearnHome = lazy(() => import("./pages/LearnHome.jsx"));
 const LessonView = lazy(() => import("./pages/LessonView.jsx"));
 const AskView = lazy(() => import("./pages/AskView.jsx"));
+const AccountView = lazy(() => import("./pages/AccountView.jsx"));
 
 // Shown briefly while a route's chunk downloads.
 function PageLoader() {
@@ -38,6 +40,7 @@ export default function App() {
   const location = useLocation();
   return (
     <ErrorBoundary key={location.pathname}>
+      <LearnProgressSync />
       <Suspense fallback={<PageLoader />}>
         <Routes>
         {/* Public */}
@@ -86,6 +89,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <WorkspaceView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <AccountView />
             </ProtectedRoute>
           }
         />

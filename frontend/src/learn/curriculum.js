@@ -8,6 +8,19 @@ import foundations from "./modules/foundations.js";
 import launch from "./modules/launch.js";
 import planning from "./modules/planning.js";
 import strategy from "./modules/strategy.js";
+import { QUIZZES } from "./quizzes.js";
+
+// The running example used throughout the lessons. "Practice it" links into the workspace
+// open the new-project form pre-filled with it, so learners go straight to generating.
+const SAMPLE_PROJECT = {
+  title: "FocusFlow",
+  description: "A shared focus timer that lets remote engineering teams protect deep-work blocks together.",
+  audience: "Remote engineering leads and their teams",
+};
+const PRACTICE_URL = `/dashboard?${new URLSearchParams({ new: "1", ...SAMPLE_PROJECT })}`;
+
+const withPractice = (practice) =>
+  practice.to === "/dashboard" ? { ...practice, to: PRACTICE_URL } : practice;
 
 export const MODULES = [foundations, discovery, strategy, planning, execution, launch, career];
 
@@ -15,6 +28,8 @@ export const MODULES = [foundations, discovery, strategy, planning, execution, l
 export const LESSONS = MODULES.flatMap((module, moduleIndex) =>
   module.lessons.map((lesson, lessonIndex) => ({
     ...lesson,
+    practice: withPractice(lesson.practice),
+    quiz: QUIZZES[lesson.slug] ?? [],
     moduleId: module.id,
     moduleTitle: module.title,
     moduleNumber: moduleIndex + 1,

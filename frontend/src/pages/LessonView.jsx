@@ -8,6 +8,7 @@ import Button from "../components/Button.jsx";
 import Markdown from "../components/Markdown.jsx";
 import SiteLayout from "../components/SiteLayout.jsx";
 import CourseSidebar from "../learn/CourseSidebar.jsx";
+import LessonQuiz from "../learn/LessonQuiz.jsx";
 import { findLesson } from "../learn/curriculum.js";
 import { useLearnProgress } from "../learn/useLearnProgress.js";
 
@@ -83,6 +84,14 @@ export default function LessonView() {
           <div className="card px-5 py-6 sm:px-8 sm:py-8">
             <Markdown>{lesson.body}</Markdown>
           </div>
+
+          {lesson.quiz.length > 0 && (
+            <LessonQuiz
+              key={lesson.slug}
+              questions={lesson.quiz}
+              onPassed={() => setComplete(lesson.slug, true)}
+            />
+          )}
 
           {/* Practice + Ask AI */}
           <div className="grid gap-4 md:grid-cols-2">

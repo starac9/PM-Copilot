@@ -8,6 +8,7 @@
 import { Component } from "react";
 import { AlertTriangle } from "lucide-react";
 
+import { reportError } from "../lib/monitoring.js";
 import Button from "./Button.jsx";
 
 export default class ErrorBoundary extends Component {
@@ -19,8 +20,8 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // In a real app this is where we'd report to Sentry/etc. For now, log for debugging.
     console.error("Render error caught by ErrorBoundary:", error, info);
+    reportError(error, { componentStack: info?.componentStack }); // Sentry, if configured
   }
 
   // Clear the error so children get a fresh mount and can try to render again.

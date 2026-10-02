@@ -32,3 +32,6 @@ fastembed>=0.7.4                 # local embeddings (EMBED_PROVIDER=local) — o
 # --- Testing ---
 pytest>=8.3.4              # test runner
 httpx>=0.28.1              # required by FastAPI's TestClient to make fake requests
+
+# --- Error tracking (optional; only used when SENTRY_DSN is set) ---
+sentry-sdk[fastapi]>=2.0.0

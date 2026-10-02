@@ -1,13 +1,16 @@
 # PM Copilot — Handover & Context Document
 
 > **Last updated:** 2026-10-02  
-> **Status:** All critical bugs fixed. App is runnable locally.
+> **Status:** Live (Vercel + Render). All-in-one PM platform: AI workspace, Learn course, PM AI Chat.
 
 ---
 
 ## 1. Project Overview
 
-**PM Copilot** is an AI-powered product management tool that converts a one-line idea into:
+**PM Copilot** is an all-in-one product management platform with three pillars:
+**Workspace** (do the work), **Learn** (a PM course from scratch), and **PM AI Chat** (ask a mentor).
+
+The **workspace** converts a one-line idea into:
 
 - A structured **PRD** (problem statement, personas, metrics, scope, risks)
 - **User stories** with RICE prioritization inputs
@@ -15,10 +18,18 @@
 - **PM Workspace** artifacts (strategy, OKRs, market analysis, GTM, personas, release notes, stakeholder updates, discovery)
 - **RAG grounding** — upload PDF/Markdown docs and every generation is grounded in them via pgvector
 
+**Learn** (`/learn`, public): 7 modules / 23 lessons (static data in `frontend/src/learn/`), each
+with a 2-question quiz, a "Practice it" link that pre-fills a sample workspace project, and
+"Ask PM AI about this lesson" prompts. Progress syncs to the account when signed in.
+
+**PM AI Chat** (`/ask`, public): a streaming PM mentor (`POST /chat/mentor/stream`). Signed-in
+users' conversation is saved to their account.
+
 **Stack:**
 - **Backend:** FastAPI + SQLAlchemy + PostgreSQL (Neon) + pgvector
 - **Frontend:** React 18 + Vite + TanStack Query v5 + react-hook-form + Zod + Tailwind CSS
-- **AI:** Groq (default, free) or Google Gemini — swappable via `LLM_PROVIDER` env var
+- **AI:** Google Gemini (primary in production) or Groq — `LLM_PROVIDER` picks who answers first;
+  failures fall back through backup models and then the other provider (see §7)
 - **Auth:** JWT (email/password) + optional Google OAuth
 - **Deploy:** Render (backend) + Vercel (frontend)
 
@@ -67,10 +78,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env: fill in DATABASE_URL, JWT_SECRET, GROQ_API_KEY (or GEMINI_API_KEY)
+# Edit .env: fill in DATABASE_URL, JWT_SECRET, GEMINI_API_KEY (and/or GROQ_API_KEY)
 
 # Run DB migrations (first time, or after schema changes)
 alembic upgrade head
+
+# No Postgres handy? DATABASE_URL=sqlite:///./local.db works for everything except RAG
+# retrieval (which then quietly returns no context). Migrations are Postgres-only, so create
+# the tables directly instead of running alembic:
+#   python -c "from app.core.database import Base, engine; import app.models; Base.metadata.create_all(engine)"
 
 # Start the dev server
 uvicorn app.main:app --reload
@@ -101,13 +117,20 @@ npm run dev
 |---|---|---|
 | `DATABASE_URL` | ✅ | PostgreSQL connection string (psycopg3: `postgresql+psycopg://…`) |
 | `JWT_SECRET` | ✅ | Random secret for signing JWTs (`openssl rand -hex 32`) |
-| `GROQ_API_KEY` | if using Groq | Groq API key (free at console.groq.com) |
 | `GEMINI_API_KEY` | if using Gemini | Google AI Studio key |
-| `LLM_PROVIDER` | — | `"groq"` (default) or `"gemini"` |
+| `GROQ_API_KEY` | if using Groq | Groq API key (free at console.groq.com); also enables Groq as a fallback |
+| `LLM_PROVIDER` | — | Who answers first: `"gemini"` (production) or `"groq"` (code default) |
+| `GEMINI_MODEL` | — | Default `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODELS` | — | Tried in order on quota/overload/retired model. Default `gemini-3.7-flash,gemini-3.5-flash,gemini-3.5-flash-lite` |
+| `GROQ_MODEL` | — | Default `openai/gpt-oss-120b` (Groq's Llama models are Enterprise-only) |
 | `EMBED_PROVIDER` | — | `"local"` (default, fastembed offline) or `"gemini"` |
-| `FRONTEND_URL` | — | CORS origin; `http://localhost:5173` for local dev |
+| `FRONTEND_URL` | — | CORS origin(s), comma-separated, no trailing slash. Production: `https://pm-copilot-ai.vercel.app` |
+| `FRONTEND_ORIGIN_REGEX` | — | Optional regex to also allow your Vercel preview deploys |
+| `CHAT_RATE_LIMIT_PER_HOUR` | — | Public chat questions per IP per hour (default 30) |
+| `GENERATION_RATE_LIMIT_PER_HOUR` | — | PRD/story/artifact generations per user per hour (default 40) |
+| `SENTRY_DSN` | — | Optional backend error tracking |
 | `GOOGLE_CLIENT_ID` | — | Optional Google OAuth client ID |
-| `JWT_EXPIRE_MINUTES` | — | Default `1440` (24 h) |
+| `JWT_EXPIRE_MINUTES` | — | Default `10080` (7 days, sliding — see §5) |
 
 ### Frontend `.env`
 
@@ -115,6 +138,7 @@ npm run dev
 |---|---|---|
 | `VITE_API_URL` | — | Backend URL; defaults to `http://localhost:8000` |
 | `VITE_GOOGLE_CLIENT_ID` | — | Optional; enables Google Sign-In button |
+| `VITE_SENTRY_DSN` | — | Optional frontend error tracking (SDK only loads when set) |
 
 ---
 
@@ -129,7 +153,8 @@ User fills login form
   → Token stored in localStorage (key: "pmcopilot_token")
   → User object stored in localStorage (key: "pmcopilot_user")
   → React state updated → ProtectedRoute sees isAuthenticated=true
-  → navigate("/dashboard")
+  → navigate back to the page that required login (ProtectedRoute stores it in
+    location.state.from; see lib/redirect.js), else /dashboard
 
 On every subsequent API call:
   → axios interceptor reads token from localStorage → sets Authorization: Bearer <token>
@@ -137,13 +162,18 @@ On every subsequent API call:
 On page refresh:
   → AuthContext useEffect (runs once on mount) restores user from localStorage
   → loading=false → ProtectedRoute renders children (no flash to /login)
+  → in the background, POST /auth/refresh swaps the token for a fresh 7-day one
+    (sliding session). A 401 there signs out quietly; network errors keep the session.
 
 On 401 from any non-auth endpoint:
   → axios interceptor clears localStorage → redirects to /login
 
 On logout:
-  → AuthContext.logout() clears localStorage + React state
-  → Navbar calls logout() then navigate("/login")
+  → AuthContext.logout() clears localStorage (incl. local Learn progress + chat, which
+    live on the account) + React state + the React Query cache
+  → SiteNav calls logout() then navigate("/login")
+
+Change password: /account → PUT /auth/password (requires the current password).
 ```
 
 ### Google OAuth Flow
@@ -255,10 +285,31 @@ POST /projects/{id}/prd/generate
 Login → localStorage["pmcopilot_token"] = JWT
        localStorage["pmcopilot_user"] = JSON user object
 
-Refresh → AuthContext useEffect reads both on mount → restores session
+Refresh → AuthContext useEffect reads both on mount → restores session → /auth/refresh
 
 Logout / 401 → both localStorage keys removed → React state null → redirect /login
 ```
+
+---
+
+## 7b. AI Provider Fallback
+
+Every AI call goes through `llm_service._call_with_fallback` (or `_stream_with_fallback` for
+streaming). It walks (provider, model) candidates in order:
+
+1. `LLM_PROVIDER`'s configured model (`GEMINI_MODEL` / `GROQ_MODEL`)
+2. that provider's built-in default model (host env vars override code defaults, so a stale
+   env var pointing at a retired model can't break everything)
+3. `GEMINI_FALLBACK_MODELS` (Gemini only)
+4. the other provider, if it has an API key
+
+Any provider error status (bad key, unknown model, quota, overload) moves straight to the
+next candidate — no retry, since it won't clear immediately. Only a malformed reply (bad JSON
+/ schema mismatch) is retried on the same model. If everything fails, the 502 detail lists
+each failure, e.g. `gemini/gemini-3.8-flash: rate limit / quota exceeded (429)`.
+
+Streaming can only fall back **before** the first token; a mid-answer failure appends
+"_(The answer was cut off — please try again.)_".
 
 ---
 
@@ -266,13 +317,14 @@ Logout / 401 → both localStorage keys removed → React state null → redirec
 
 | Area | Issue / Opportunity |
 |---|---|
-| **Token refresh** | JWT expires after 24h. No refresh token — user must log in again. Consider implementing sliding window or refresh tokens for better UX. |
-| **Offline support** | No service worker. Cached React Query data shows on revisit but no offline writes. |
-| **Roadmap persistence** | Sprint roadmap is computed on demand and not stored. Changing RICE inputs and rebuilding can change the roadmap unexpectedly. Consider persisting. |
-| **Context window limits** | For large PRDs with many uploaded docs, the Groq/Gemini context window can be exceeded. Consider trimming RAG chunks more aggressively. |
-| **pgvector on SQLite** | The `cosine_distance()` call in `rag_service.py` fails on SQLite (used in tests). Tests should mock `retrieve_context` or use a PostgreSQL test DB. |
-| **Rate limiting** | No rate limiting on `/chat` or generation endpoints. A public deployment should add `slowapi` or similar. |
-| **Google OAuth** | Only works if both `VITE_GOOGLE_CLIENT_ID` (frontend) and `GOOGLE_CLIENT_ID` (backend) are set. The frontend silently hides the button if unconfigured — which is intentional. |
+| **Free-tier AI quota** | Gemini free quotas are small and per model (they reset daily). Fallback models absorb this, but heavy traffic can exhaust all of them — enable billing on the key for a public launch. |
+| **Rate limits are in-memory** | `core/rate_limit.py` counts per process. Fine for one Render instance; use Redis if you scale out. Counters reset on redeploy. |
+| **Password reset** | Signed-in users can change their password; there's no "forgot password" email flow (needs an email provider). |
+| **Roadmap persistence** | Sprint roadmap is computed on demand and not stored. |
+| **Context window limits** | Very large PRDs + many docs could exceed the model context. Consider trimming RAG chunks. |
+| **pgvector on SQLite** | RAG retrieval only works on Postgres; on SQLite it degrades to no context (and rolls back the session). |
+| **Keep-alive** | `.github/workflows/keepalive.yml` pings `/health` every 10 min. GitHub pauses scheduled workflows after 60 days with no repo activity. |
+| **Google OAuth** | Only works if both `VITE_GOOGLE_CLIENT_ID` (frontend) and `GOOGLE_CLIENT_ID` (backend) are set. |
 
 ---
 
@@ -284,7 +336,9 @@ Logout / 401 → both localStorage keys removed → React state null → redirec
 | `backend/app/core/config.py` | All env vars as a typed Pydantic Settings object |
 | `backend/app/core/security.py` | bcrypt hashing + JWT sign/verify |
 | `backend/app/deps.py` | `get_current_user` — the auth guard injected into all protected routes |
-| `backend/app/services/llm_service.py` | All LLM calls (PRD, stories, artifacts, chat) — single interface, two providers |
+| `backend/app/services/llm_service.py` | All LLM calls (PRD, stories, artifacts, chat, mentor + streaming) with provider/model fallback |
+| `backend/app/core/rate_limit.py` | In-memory sliding-window limits: chat per IP, generation per user |
+| `backend/app/routers/me.py` | Signed-in user's Learn progress + saved PM AI Chat conversation |
 | `backend/app/services/rag_service.py` | Upload → chunk → embed → store → retrieve (pgvector cosine search) |
 | `backend/app/services/prompts.py` | All system prompts and per-artifact ARTIFACT_SPECS registry |
 | `backend/app/services/roadmap_service.py` | RICE scoring + greedy sprint packing (no LLM) |
@@ -294,6 +348,9 @@ Logout / 401 → both localStorage keys removed → React state null → redirec
 | `frontend/src/lib/queryClient.js` | TanStack Query client + `qk` key factory |
 | `frontend/src/hooks/usePrd.js` | React Query hooks for PRD CRUD + generation |
 | `frontend/src/hooks/useArtifacts.js` | React Query hooks for PM workspace artifact CRUD |
+| `frontend/src/components/SiteNav.jsx` | The one platform nav (Workspace · Learn · PM AI Chat) on every page |
+| `frontend/src/learn/` | Course data (`modules/*.js`), quizzes, progress sync hook, sidebar |
+| `frontend/src/pages/AskView.jsx` | PM AI Chat: streaming via `fetch`, stop button, account sync |
 
 ---
 
@@ -303,10 +360,11 @@ Logout / 401 → both localStorage keys removed → React state null → redirec
 
 - Service type: **Web Service**
 - Build command: `pip install -r requirements.txt`
-- Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Start command: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+  (migrations run automatically on every deploy; latest is `0005_learning`)
 - Python version: **3.11** (set via `render.yaml`)
-- Set all env vars in Render dashboard (`DATABASE_URL`, `JWT_SECRET`, `GROQ_API_KEY`, `FRONTEND_URL`=your Vercel URL)
-- Run `alembic upgrade head` after deploying schema changes (use Render Shell)
+- Env vars in the Render dashboard: `DATABASE_URL`, `JWT_SECRET`, `LLM_PROVIDER=gemini`,
+  `GEMINI_API_KEY`, `FRONTEND_URL=https://pm-copilot-ai.vercel.app` (+ optional ones in §4)
 
 ### Frontend (Vercel)
 
@@ -314,6 +372,13 @@ Logout / 401 → both localStorage keys removed → React state null → redirec
 - Output directory: `dist`
 - Set `VITE_API_URL=https://your-backend.onrender.com` in Vercel env vars
 - `vercel.json` configures SPA routing (all paths → `index.html`)
+- Production URL: **https://pm-copilot-ai.vercel.app** (a second Vercel project, `pm-copilot`,
+  also builds this repo but its origin isn't allowed by CORS — it can be deleted)
+
+### CI
+
+- `.github/workflows/ci.yml` runs backend tests (Python 3.11) and the frontend build on every
+  push to `main` and every PR.
 
 ---
 
@@ -338,4 +403,4 @@ The workspace is data-driven. To add a new artifact type (e.g. `"competitive_ana
 
 ---
 
-*Generated by Antigravity on 2026-10-02.*
+*Originally generated by Antigravity on 2026-10-02; updated for the learning platform release.*

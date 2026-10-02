@@ -65,12 +65,14 @@ export default function SiteNav({ wide = false }) {
           {isAuthenticated ? (
             <>
               {user && (
-                <span
-                  title={user.email}
-                  className="hidden h-10 w-10 items-center justify-center rounded-lg bg-grass-400 font-mono text-sm font-semibold text-ink lg:flex"
+                <Link
+                  to="/account"
+                  title={`${user.email} — account`}
+                  aria-label="Your account"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-grass-400 font-mono text-sm font-semibold text-ink transition hover:bg-grass-500"
                 >
                   {user.email?.[0]?.toUpperCase()}
-                </span>
+                </Link>
               )}
               <Button variant="secondary" onClick={handleLogout} className="!px-3" aria-label="Log out">
                 <LogOut size={15} strokeWidth={2} />

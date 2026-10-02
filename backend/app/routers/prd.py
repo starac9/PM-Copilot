@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import limit_generation_by_user
 from app.deps import get_current_user
 from app.models.prd import PRD
 from app.models.user import User
@@ -21,7 +22,11 @@ from app.services.rag_service import retrieve_context
 router = APIRouter(prefix="/projects/{project_id}/prd", tags=["prd"])
 
 
-@router.post("/generate", response_model=PRDOut)
+@router.post(
+    "/generate",
+    response_model=PRDOut,
+    dependencies=[Depends(limit_generation_by_user)],  # AI calls spend quota
+)
 def generate_project_prd(
     project_id: int,
     response: Response,

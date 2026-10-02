@@ -9,8 +9,11 @@ import ThemedToaster from "./components/ThemedToaster.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import GoogleProvider from "./context/GoogleProvider.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { initMonitoring } from "./lib/monitoring.js";
 import { queryClient } from "./lib/queryClient.js";
 import "./index.css";
+
+initMonitoring(); // no-op unless VITE_SENTRY_DSN is set
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

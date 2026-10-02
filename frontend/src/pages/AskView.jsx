@@ -1,8 +1,10 @@
 // /ask — PM AI Chat: a full-page mentor for product-management questions, backed by the
-// /chat/mentor endpoint (same LLM service as the rest of the app, with a teaching prompt).
+// streaming /chat/mentor/stream endpoint (same LLM service as the rest of the app, with a
+// teaching prompt). Answers render token by token and can be stopped.
 //
 // Deep links: /ask?q=<question>&topic=<lesson title> pre-sends a question (used by Learn
-// lessons). The conversation is kept in localStorage so a refresh doesn't lose it.
+// lessons). The conversation is kept in localStorage so a refresh doesn't lose it, and —
+// when signed in — saved to the account so it follows you across devices.
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -15,11 +17,13 @@ import {
   Plus,
   RotateCcw,
   Sparkles,
+  Square,
   Target,
   X,
 } from "lucide-react";
 
-import api, { apiErrorMessage } from "../api/client.js";
+import api, { baseURL } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import Logo from "../components/Logo.jsx";
 import Markdown from "../components/Markdown.jsx";
 import { Eyebrow } from "../components/PageHeader.jsx";
@@ -99,7 +103,12 @@ function AssistantAvatar() {
   );
 }
 
+// Trim a conversation to what the backend accepts for saving (100 messages, 8000 chars each).
+const forSaving = (messages) =>
+  messages.slice(-100).map((m) => ({ role: m.role, content: m.content.slice(0, MAX_CHARS) }));
+
 export default function AskView() {
+  const { isAuthenticated } = useAuth();
   const [params, setParams] = useSearchParams();
   const initial = useRef(loadChat());
   const [messages, setMessages] = useState(initial.current.messages);
@@ -110,6 +119,8 @@ export default function AskView() {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const autoSent = useRef(false);
+  const controllerRef = useRef(null); // AbortController of the in-flight answer
+  const sentSinceMount = useRef(false); // don't let a slow account load overwrite new messages
 
   useEffect(() => {
     saveChat({ messages, topic });
@@ -127,28 +138,104 @@ export default function AskView() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
+  // Signed in: load the conversation saved on the account (or upload this browser's one).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api
+      .get("/me/mentor-chat")
+      .then(({ data }) => {
+        if (sentSinceMount.current) return;
+        if (data.messages.length > 0) {
+          setMessages(data.messages);
+          setTopic((t) => t || data.topic);
+        } else if (initial.current.messages.length > 0) {
+          api.put("/me/mentor-chat", { messages: forSaving(initial.current.messages), topic });
+        }
+      })
+      .catch(() => {}); // offline / waking backend: the local copy still works
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  function persist(conversation, activeTopic) {
+    if (!isAuthenticated) return;
+    api
+      .put("/me/mentor-chat", { messages: forSaving(conversation), topic: activeTopic })
+      .catch(() => {});
+  }
+
   async function ask(history, activeTopic = topic) {
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    let text = "";
+    const show = (content) => setMessages([...history, { role: "assistant", content }]);
+
     try {
-      const { data } = await api.post("/chat/mentor", {
-        messages: history.slice(-HISTORY_LIMIT).map((m) => ({
-          role: m.role,
-          content: m.content.slice(0, MAX_CHARS),
-        })),
-        topic: activeTopic,
+      const res = await fetch(`${baseURL}/chat/mentor/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history.slice(-HISTORY_LIMIT).map((m) => ({
+            role: m.role,
+            content: m.content.slice(0, MAX_CHARS),
+          })),
+          topic: activeTopic,
+        }),
+        signal: controller.signal,
       });
-      setMessages([...history, { role: "assistant", content: data.reply }]);
+      if (!res.ok) {
+        // Errors (502 no model available, 429 rate limit, 422) come back as JSON {detail}.
+        let detail = `PM AI couldn't answer right now (error ${res.status}).`;
+        try {
+          const body = await res.json();
+          if (typeof body.detail === "string") detail = body.detail;
+        } catch {
+          /* non-JSON error page */
+        }
+        throw new Error(detail);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        show(text);
+      }
+      text += decoder.decode();
+      const final = [...history, { role: "assistant", content: text || "_(No answer received.)_" }];
+      setMessages(final);
+      persist(final, activeTopic);
     } catch (err) {
-      setError(apiErrorMessage(err, "PM AI couldn't answer right now."));
+      if (text) {
+        // Keep the partial answer and say why it ended.
+        const note = err.name === "AbortError" ? "_(Stopped.)_" : "_(The answer was cut off — try again.)_";
+        const final = [...history, { role: "assistant", content: `${text}\n\n${note}` }];
+        setMessages(final);
+        persist(final, activeTopic);
+      } else if (err.name !== "AbortError") {
+        setError(
+          err instanceof TypeError
+            ? "Can't reach the server. It may be waking up — try again in a moment."
+            : err.message
+        );
+      }
     } finally {
+      controllerRef.current = null;
       setLoading(false);
     }
+  }
+
+  function stop() {
+    controllerRef.current?.abort();
   }
 
   function send(text) {
     const content = (text ?? input).trim();
     if (!content || loading) return;
+    sentSinceMount.current = true;
     const history = [...messages, { role: "user", content }];
     setMessages(history);
     setInput("");
@@ -167,9 +254,12 @@ export default function AskView() {
   }, []);
 
   function newChat() {
+    stop();
+    sentSinceMount.current = true;
     setMessages([]);
     setTopic("");
     setError(null);
+    if (isAuthenticated) api.delete("/me/mentor-chat").catch(() => {});
     inputRef.current?.focus();
   }
 
@@ -248,15 +338,17 @@ export default function AskView() {
                       <div className="card px-5 py-4">
                         <Markdown>{m.content}</Markdown>
                       </div>
-                      <div className="mt-1 flex justify-end">
-                        <CopyButton text={m.content} />
-                      </div>
+                      {!(loading && i === messages.length - 1) && (
+                        <div className="mt-1 flex justify-end">
+                          <CopyButton text={m.content} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
               )}
 
-              {loading && (
+              {loading && messages[messages.length - 1]?.role === "user" && (
                 <div className="flex gap-3">
                   <AssistantAvatar />
                   <div className="card flex items-center gap-2.5 px-4 py-3 text-sm text-muted">
@@ -321,14 +413,26 @@ export default function AskView() {
               aria-label="Your question"
               className="max-h-[200px] flex-1 resize-none bg-transparent px-2.5 py-2 text-[15px] text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100"
             />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              aria-label="Send"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-grass-400 text-ink transition hover:bg-grass-500 disabled:opacity-40"
-            >
-              <ArrowUp size={18} strokeWidth={2.5} />
-            </button>
+            {loading ? (
+              <button
+                type="button"
+                onClick={stop}
+                aria-label="Stop answering"
+                title="Stop"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-white transition hover:opacity-90 dark:bg-white dark:text-ink"
+              >
+                <Square size={14} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                aria-label="Send"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-grass-400 text-ink transition hover:bg-grass-500 disabled:opacity-40"
+              >
+                <ArrowUp size={18} strokeWidth={2.5} />
+              </button>
+            )}
           </form>
           <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider text-slate-400">
             Enter to send · Shift+Enter for a new line · AI can make mistakes
