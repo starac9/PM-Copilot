@@ -71,13 +71,20 @@ def _get_groq():
 
 
 def _generate_gemini(prompt: str, schema, system_instruction: str) -> str:
-    """Ask Gemini for schema-constrained JSON and return the raw JSON string."""
-    config = {
-        "response_mime_type": "application/json",
-        "response_schema": schema,
-        "system_instruction": system_instruction,
-        "temperature": 0.7,
-    }
+    """Ask Gemini for schema-constrained JSON and return the raw JSON string.
+
+    google-genai ≥ 2.0 requires `config` to be a `types.GenerateContentConfig`
+    object (or a dict that Pydantic can coerce into one). Passing a raw dict worked
+    in v0.8 but silently fails in v2. We use the typed object for forward-compat.
+    """
+    from google.genai import types
+
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=schema,
+        system_instruction=system_instruction,
+        temperature=0.7,
+    )
     response = _get_gemini().models.generate_content(
         model=settings.GEMINI_MODEL, contents=prompt, config=config
     )
@@ -222,11 +229,16 @@ def chat_reply(messages: list[dict]) -> str:
             return resp.choices[0].message.content.strip()
 
         # Gemini path: flatten the short history into a single prompt.
+        from google.genai import types
+
         history = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
         response = _get_gemini().models.generate_content(
             model=settings.GEMINI_MODEL,
             contents=f"{history}\nassistant:",
-            config={"system_instruction": CHAT_SYSTEM_INSTRUCTION, "temperature": 0.5},
+            config=types.GenerateContentConfig(
+                system_instruction=CHAT_SYSTEM_INSTRUCTION,
+                temperature=0.5,
+            ),
         )
         return response.text.strip()
     except Exception as exc:  # noqa: BLE001 - surface any provider failure uniformly
