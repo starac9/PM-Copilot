@@ -1,5 +1,6 @@
-// Defines all routes. Public: / (landing), /login, /register. Protected (require login):
-// /dashboard and /projects/:id (+ /stories, /roadmap). Unknown paths redirect to /.
+// Defines all routes. Public: / (landing), /login, /register, /learn (+ lessons), /ask.
+// Protected (require login): /dashboard and /projects/:id (+ /stories, /roadmap,
+// /workspace). Unknown paths redirect to /.
 //
 // Pages are code-split with React.lazy so each route ships as its own chunk — the browser
 // only downloads the page it needs (e.g. the landing page doesn't pull in the PRD editor).
@@ -18,6 +19,9 @@ const ProjectView = lazy(() => import("./pages/ProjectView.jsx"));
 const StoriesView = lazy(() => import("./pages/StoriesView.jsx"));
 const RoadmapView = lazy(() => import("./pages/RoadmapView.jsx"));
 const WorkspaceView = lazy(() => import("./pages/WorkspaceView.jsx"));
+const LearnHome = lazy(() => import("./pages/LearnHome.jsx"));
+const LessonView = lazy(() => import("./pages/LessonView.jsx"));
+const AskView = lazy(() => import("./pages/AskView.jsx"));
 
 // Shown briefly while a route's chunk downloads.
 function PageLoader() {
@@ -40,6 +44,9 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/learn" element={<LearnHome />} />
+        <Route path="/learn/:slug" element={<LessonView />} />
+        <Route path="/ask" element={<AskView />} />
 
         {/* Protected: each is wrapped so unauthenticated users get bounced to /login. */}
         <Route

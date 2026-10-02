@@ -20,7 +20,7 @@ google-auth>=2.50.0              # verify Google Sign-In ID tokens (/auth/google
 requests>=2.32.5                 # HTTP transport used by google-auth token verification
 
 # --- AI: text generation (provider-isolated; pick one via LLM_PROVIDER) ---
-google-genai>=0.8.0        # Google Gemini SDK (LLM_PROVIDER=gemini)
+google-genai>=2.27.0       # Google Gemini SDK (LLM_PROVIDER=gemini); code uses the v2 API
 groq>=1.0.0                # Groq SDK — free API, no credit card (LLM_PROVIDER=groq)
 
 # --- RAG (Phase 4) ---

@@ -10,18 +10,22 @@ import {
   Compass,
   Cpu,
   FileText,
+  GraduationCap,
   ListChecks,
+  MessageSquareText,
   Rocket,
   Route,
   ScanSearch,
   Share2,
+  Sparkles,
   Target,
 } from "lucide-react";
 
 import Logo from "../components/Logo.jsx";
-import ThemeToggle from "../components/ThemeToggle.jsx";
+import SiteNav from "../components/SiteNav.jsx";
 import Wordmark from "../components/Wordmark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { LESSONS, MODULES } from "../learn/curriculum.js";
 
 // Lazy-loaded so its markdown renderer is fetched only when the widget mounts.
 const ChatWidget = lazy(() => import("../components/ChatWidget.jsx"));
@@ -83,62 +87,45 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] font-sans text-ink dark:bg-[#0a0d14] dark:text-slate-100">
-      {/* ── Nav ──────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-[#FAFAF7]/85 backdrop-blur-xl dark:border-slate-800 dark:bg-[#0a0d14]/85">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/">
-            <Wordmark />
-          </Link>
-          <nav className="hidden items-center gap-9 md:flex">
-            <a href="#capabilities" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">
-              Features
-            </a>
-            <a href="#workflow" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">
-              Workflow
-            </a>
-          </nav>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {isAuthenticated ? (
-              <GreenLink to="/dashboard">Dashboard</GreenLink>
-            ) : (
-              <>
-                <Link to="/login" className="hidden text-sm font-medium text-slate-600 transition hover:text-ink dark:text-slate-300 dark:hover:text-white sm:block">
-                  Sign in
-                </Link>
-                <GreenLink to="/register">Get started</GreenLink>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* ── Nav (shared platform nav: Workspace · Learn · PM AI Chat) ─────── */}
+      <SiteNav wide />
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="border-b border-dashed border-slate-200 dark:border-slate-800">
         <div className="mx-auto grid max-w-7xl lg:grid-cols-2">
           {/* Left: message */}
           <div className="flex flex-col justify-center px-6 py-16 lg:py-24">
-            <Eyebrow>AI product management</Eyebrow>
+            <Eyebrow>The all-in-one product management platform</Eyebrow>
             <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-tight text-ink dark:text-white sm:text-6xl">
-              Turn any idea into
+              Work as a PM.
               <br />
-              a{" "}
+              Learn the craft.
+              <br />
               <span className="box-decoration-clone rounded-[3px] bg-grass-400 px-2.5 pb-1 text-ink">
-                shipping plan
+                Ask the AI.
               </span>
-              .
             </h1>
             <p className="mt-7 max-w-lg text-lg leading-relaxed text-slate-500 dark:text-slate-400">
-              Describe a product in plain English. PM Copilot writes the PRD, prioritizes the
-              backlog with RICE, and builds a capacity-aware sprint roadmap — grounded in your
-              own documents.
+              One place to do the job, learn it from scratch, and get answers on demand: an AI
+              workspace that writes PRDs, backlogs, and roadmaps; a step-by-step PM course; and a
+              PM mentor you can ask anything.
             </p>
-            <div className="mt-9 flex items-center gap-5">
-              <GreenLink to="/register">Start building</GreenLink>
-              <span className="hidden h-6 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
-              <span className="hidden font-mono text-xs uppercase tracking-widest text-slate-400 sm:block">
-                Powered by Groq
-              </span>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <GreenLink to={isAuthenticated ? "/dashboard" : "/register"}>
+                {isAuthenticated ? "Open workspace" : "Start building"}
+              </GreenLink>
+              <Link
+                to="/learn"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+              >
+                <GraduationCap size={16} /> Start learning
+              </Link>
+              <Link
+                to="/ask"
+                className="inline-flex items-center gap-2 px-2 py-2.5 text-sm font-semibold text-slate-600 transition hover:text-ink dark:text-slate-300 dark:hover:text-white"
+              >
+                <Sparkles size={15} className="text-grass-500" /> Ask PM AI
+              </Link>
             </div>
           </div>
 
@@ -148,6 +135,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── Three pillars: Work · Learn · Ask ─────────────────────────────── */}
+      <Pillars />
 
       {/* ── Stack marquee ────────────────────────────────────────────────── */}
       <section className="border-b border-dashed border-slate-200 py-10 dark:border-slate-800">
@@ -230,8 +220,8 @@ export default function Landing() {
           <div>
             <Wordmark />
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              Turn a one-line idea into a PRD, a prioritized backlog, and a sprint roadmap —
-              grounded in your own docs.
+              The all-in-one PM platform: an AI workspace for PRDs, backlogs, and roadmaps, a
+              course to learn product management from scratch, and a PM mentor on call.
             </p>
             <div className="mt-6">
               <GreenLink to="/register">Start building</GreenLink>
@@ -239,8 +229,10 @@ export default function Landing() {
           </div>
           <div className="flex flex-col gap-3 md:items-end">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-400">Navigate</p>
+            <Link to="/dashboard" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">Workspace</Link>
+            <Link to="/learn" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">Learn product management</Link>
+            <Link to="/ask" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">PM AI Chat</Link>
             <a href="#capabilities" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">Features</a>
-            <a href="#workflow" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">Workflow</a>
             <Link to="/login" className="text-sm text-slate-500 transition hover:text-ink dark:hover:text-white">Sign in</Link>
           </div>
         </div>
@@ -263,6 +255,119 @@ export default function Landing() {
 }
 
 // ── Section building blocks ──────────────────────────────────────────────────
+
+// The three ways into the platform, each a card with a tiny live-looking preview.
+function Pillars() {
+  const pillars = [
+    {
+      n: "01",
+      tag: "Work",
+      icon: Cpu,
+      title: "AI PM workspace",
+      text: "Turn an idea into a PRD, RICE-scored user stories, a sprint roadmap, and 8 more PM artifacts — grounded in your docs.",
+      to: "/dashboard",
+      cta: "Open the workspace",
+      preview: (
+        <div className="space-y-1.5 font-mono text-[11px]">
+          {[
+            ["PRD", "5 sections", true],
+            ["Backlog", "12 stories", true],
+            ["Roadmap", "3 sprints", false],
+          ].map(([k, v, ok]) => (
+            <div key={k} className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-800 dark:bg-slate-950">
+              <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-grass-500" : "animate-pulse bg-slate-300 dark:bg-slate-600"}`} />
+                {k}
+              </span>
+              <span className="text-slate-400">{v}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      n: "02",
+      tag: "Learn",
+      icon: GraduationCap,
+      title: "Learn PM from scratch",
+      text: `A step-by-step course — ${MODULES.length} modules, ${LESSONS.length} lessons — from the basics to roadmaps, metrics, and interviews, with hands-on practice.`,
+      to: "/learn",
+      cta: "Start the course",
+      preview: (
+        <div className="space-y-1.5 font-mono text-[11px]">
+          {LESSONS.slice(0, 3).map((l, i) => (
+            <div key={l.slug} className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-800 dark:bg-slate-950">
+              <span className="text-grass-600 dark:text-grass-400">{l.number}</span>
+              <span className="truncate text-slate-600 dark:text-slate-300">{l.title}</span>
+              {i === 0 && <Check size={12} className="ml-auto shrink-0 text-grass-500" />}
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      n: "03",
+      tag: "Ask",
+      icon: MessageSquareText,
+      title: "PM AI Chat",
+      text: "An always-on PM mentor. Ask about frameworks, metrics, interviews, or your own product — get structured answers with real examples.",
+      to: "/ask",
+      cta: "Ask a question",
+      preview: (
+        <div className="space-y-1.5 text-[12px]">
+          <div className="ml-auto w-fit rounded-lg rounded-br-sm bg-ink px-2.5 py-1.5 text-white dark:bg-slate-800">
+            RICE or MoSCoW?
+          </div>
+          <div className="w-fit max-w-[90%] rounded-lg rounded-bl-sm border border-grass-300 bg-grass-50 px-2.5 py-1.5 text-ink dark:border-grass-700/50 dark:bg-grass-700/10 dark:text-slate-200">
+            Use <b>RICE</b> to rank a backlog, <b>MoSCoW</b> to agree MVP scope…
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <section className="border-b border-dashed border-slate-200 py-20 dark:border-slate-800">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="text-center">
+          <Eyebrow>Three ways in</Eyebrow>
+          <h2 className="mx-auto mt-4 max-w-2xl text-3xl font-semibold tracking-tight text-ink dark:text-white sm:text-4xl">
+            Do the work, learn the craft, ask the expert
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-slate-500 dark:text-slate-400">
+            Everything a product manager needs — whether you&apos;re shipping today or just getting started.
+          </p>
+        </div>
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {pillars.map(({ n, tag, icon: Icon, title, text, to, cta, preview }) => (
+            <Link
+              key={n}
+              to={to}
+              className="group flex flex-col rounded-xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-grass-400 hover:shadow-[0_24px_60px_-30px_rgba(115,194,47,0.55)] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-grass-600"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-ink text-grass-400 transition group-hover:bg-grass-400 group-hover:text-ink dark:bg-slate-950">
+                  <Icon size={20} strokeWidth={1.75} />
+                </span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                  {n} / {tag}
+                </span>
+              </div>
+              <h3 className="mt-5 text-xl font-semibold tracking-tight text-ink dark:text-white">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{text}</p>
+              <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-[#FAFAF7] p-3 dark:border-slate-700 dark:bg-slate-950/60" style={GRID_BG}>
+                {preview}
+              </div>
+              <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-ink transition group-hover:gap-2 dark:text-white">
+                {cta} <ChevronRight size={16} className="text-grass-500" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 // The capabilities grid, with a live highlight that steps through the PM workflow — as if
 // the copilot is working each stage in turn. This gives the section genuine, PM-relevant
@@ -318,7 +423,7 @@ function SplitRow({ eyebrow, title, text, mock, reverse = false }) {
     "border-t border-dashed border-slate-200 dark:border-slate-800 lg:border-t-0 lg:border-l lg:border-dashed";
 
   const textBlock = (second) => (
-    <div className={`flex flex-col justify-center px-6 py-16 lg:py-20 ${second ? divider : ""}`}>
+    <div className={`flex min-w-0 flex-col justify-center px-6 py-16 lg:py-20 ${second ? divider : ""}`}>
       <Eyebrow>{eyebrow}</Eyebrow>
       <h3 className="mt-5 max-w-md text-3xl font-semibold leading-tight tracking-tight text-ink dark:text-white sm:text-4xl">
         {title}
@@ -328,7 +433,7 @@ function SplitRow({ eyebrow, title, text, mock, reverse = false }) {
   );
 
   const mockBlock = (second) => (
-    <div className={`flex items-center p-6 lg:p-12 ${second ? divider : ""}`}>{mock}</div>
+    <div className={`flex min-w-0 items-center p-4 sm:p-6 lg:p-12 ${second ? divider : ""}`}>{mock}</div>
   );
 
   return (
@@ -528,15 +633,15 @@ function PipelineMock() {
     { icon: BarChart3, title: "Ship plan", sub: "prd · backlog · roadmap", active: false },
   ];
   return (
-    <div className="w-full rounded-xl border border-dashed border-slate-300 bg-white p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-slate-900" style={GRID_BG}>
+    <div className="w-full rounded-xl border border-dashed border-slate-300 bg-white p-4 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-slate-900 sm:p-6" style={GRID_BG}>
       <p className="mb-5 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-grass-600">
         Grounded in your docs
       </p>
-      <div className="flex items-stretch justify-between gap-2">
+      <div className="flex items-stretch justify-between gap-1 sm:gap-2">
         {stages.map(({ icon: Icon, title, sub, active }, i) => (
-          <div key={i} className="flex flex-1 items-center gap-2">
+          <div key={i} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
             <div
-              className={`flex-1 rounded-xl border p-4 text-center ${
+              className={`min-w-0 flex-1 rounded-xl border px-1.5 py-3 text-center sm:p-4 ${
                 active
                   ? "border-grass-400 bg-grass-50 dark:border-grass-600 dark:bg-grass-700/10"
                   : "border-slate-200 bg-[#FAFAF7] dark:border-slate-800 dark:bg-slate-950"
@@ -549,10 +654,10 @@ function PipelineMock() {
               >
                 <Icon size={17} strokeWidth={1.75} />
               </span>
-              <div className="mt-2.5 text-sm font-semibold text-ink dark:text-white">{title}</div>
-              <div className="font-mono text-[10px] text-slate-400">{sub}</div>
+              <div className="mt-2.5 text-[13px] font-semibold leading-tight text-ink dark:text-white sm:text-sm">{title}</div>
+              <div className="mt-0.5 break-words font-mono text-[10px] leading-snug text-slate-400">{sub}</div>
             </div>
-            {i < stages.length - 1 && <ChevronRight size={16} className="shrink-0 text-slate-300 dark:text-slate-600" />}
+            {i < stages.length - 1 && <ChevronRight size={14} className="shrink-0 text-slate-300 dark:text-slate-600" />}
           </div>
         ))}
       </div>

@@ -25,7 +25,6 @@ def providers(monkeypatch):
     monkeypatch.setattr(llm_service.settings, "GROQ_API_KEY", "q-key")
     monkeypatch.setattr(llm_service.settings, "GEMINI_MODEL", "gemini-2.0-flash")  # stale env
     monkeypatch.setattr(llm_service.settings, "GROQ_MODEL", "llama-3.3-70b-versatile")
-    monkeypatch.setattr(llm_service.time, "sleep", lambda s: None)
 
     calls = []
     behaviours = {}
@@ -105,3 +104,43 @@ def test_fallback_provider_skipped_without_key(providers, monkeypatch):
 def test_gemini_bad_key_is_described_as_invalid_key():
     exc = FakeAPIError(400, "400 INVALID_ARGUMENT. API key not valid. Please pass a valid API key.")
     assert "invalid API key" in llm_service._describe("gemini", "m", exc)
+
+
+def test_missing_key_is_reported_without_calling_provider(providers, monkeypatch):
+    calls, _ = providers
+    monkeypatch.setattr(llm_service.settings, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(llm_service.settings, "GROQ_API_KEY", "")
+    with pytest.raises(LLMError) as info:
+        generate_prd("T", "D", "A")
+    assert calls == []
+    assert "no API key set (GEMINI_API_KEY)" in str(info.value)
+
+
+def test_quota_exhausted_model_falls_back_to_backup_model(providers, monkeypatch):
+    calls, behaviours = providers
+    monkeypatch.setattr(llm_service.settings, "GEMINI_MODEL", "gemini-3.8-flash")
+    monkeypatch.setattr(llm_service.settings, "GEMINI_FALLBACK_MODELS", "gemini-3.7-flash")
+    monkeypatch.setattr(llm_service.settings, "GROQ_API_KEY", "")
+    behaviours[("gemini", "gemini-3.8-flash")] = FakeAPIError(429)
+    behaviours[("gemini", "gemini-3.7-flash")] = json.dumps(FAKE_PRD)
+
+    assert generate_prd("T", "D", "A") == FAKE_PRD
+    assert calls[-1] == ("gemini", "gemini-3.7-flash")
+
+
+def test_overloaded_model_is_not_retried(providers, monkeypatch):
+    calls, behaviours = providers
+    monkeypatch.setattr(llm_service.settings, "GEMINI_MODEL", "gemini-3.7-flash")
+    monkeypatch.setattr(llm_service.settings, "GEMINI_FALLBACK_MODELS", "gemini-3.5-flash")
+    monkeypatch.setattr(llm_service.settings, "GROQ_API_KEY", "")
+    behaviours[("gemini", "gemini-3.7-flash")] = FakeAPIError(503)
+    behaviours[("gemini", llm_service._DEFAULT_MODELS["gemini"])] = FakeAPIError(429)
+    behaviours[("gemini", "gemini-3.5-flash")] = json.dumps(FAKE_PRD)
+
+    assert generate_prd("T", "D", "A") == FAKE_PRD
+    # One call per model — no wasted retries on provider errors.
+    assert calls == [
+        ("gemini", "gemini-3.7-flash"),
+        ("gemini", llm_service._DEFAULT_MODELS["gemini"]),
+        ("gemini", "gemini-3.5-flash"),
+    ]

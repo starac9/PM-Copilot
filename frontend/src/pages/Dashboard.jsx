@@ -4,7 +4,7 @@
 // Data comes from React Query hooks (useProjects/useCreateProject/useDeleteProject), so the
 // list is cached — returning to this page shows instantly while refetching in the background.
 //
-// This page is rendered INSIDE ProtectedRoute, which already provides the Navbar and the
+// This page is rendered INSIDE ProtectedRoute, which already provides the platform nav and the
 // centered page container — so here we only render the page's own content.
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";

@@ -13,10 +13,11 @@ In BOTH cases we then parse and validate the result against our Pydantic schema 
 once, so a malformed or off-schema reply is caught here — never trusted downstream.
 
 RESILIENCE: every call walks a list of (provider, model) candidates — the configured model,
-then the built-in default model (env vars on the host override config defaults, so a stale
-GEMINI_MODEL/GROQ_MODEL pointing at a shut-down model would otherwise break every call), then
-the other provider if it has an API key. Errors that can't succeed on retry (bad key, model
-not found) skip straight to the next candidate instead of burning quota on a retry.
+the built-in default model (env vars on the host override config defaults, so a stale
+GEMINI_MODEL/GROQ_MODEL pointing at a shut-down model would otherwise break every call), the
+backup models in GEMINI_FALLBACK_MODELS, then the other provider if it has an API key. Errors
+from the provider (bad key, model not found, quota exhausted, overloaded) skip straight to
+the next candidate instead of burning time and quota on a retry.
 """
 
 from __future__ import annotations
@@ -24,7 +25,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 
 from app.core.config import Settings, settings
 from app.schemas.artifact import ArtifactContent
@@ -148,6 +148,10 @@ _DEFAULT_MODELS = {
 def _candidates() -> list[tuple[str, str]]:
     """Ordered (provider, model) pairs to try: configured provider first, other one after."""
     configured = {"gemini": settings.GEMINI_MODEL, "groq": settings.GROQ_MODEL}
+    backups = {
+        "gemini": [m.strip() for m in settings.GEMINI_FALLBACK_MODELS.split(",") if m.strip()],
+        "groq": [],
+    }
     keys = {"gemini": settings.GEMINI_API_KEY, "groq": settings.GROQ_API_KEY}
     primary = "groq" if settings.LLM_PROVIDER.lower() == "groq" else "gemini"
     order = [primary, "gemini" if primary == "groq" else "groq"]
@@ -158,7 +162,7 @@ def _candidates() -> list[tuple[str, str]]:
         # provider only when it has a key.
         if provider != primary and not keys[provider]:
             continue
-        for model in (configured[provider], _DEFAULT_MODELS[provider]):
+        for model in (configured[provider], _DEFAULT_MODELS[provider], *backups[provider]):
             if model and (provider, model) not in pairs:
                 pairs.append((provider, model))
     return pairs
@@ -195,11 +199,15 @@ def _describe(provider: str, model: str, exc: Exception) -> str:
 def _call_with_fallback(call, what: str):
     """Run `call(provider, model)` across the candidates; return the first success.
 
-    Per candidate: up to 2 attempts for retryable problems (bad JSON / schema mismatch, rate
-    limits, 5xx). Auth errors and unknown models move straight to the next candidate.
+    Per candidate: a second attempt only for a malformed reply (bad JSON / schema mismatch).
+    Any provider error status (auth, unknown model, quota, overload) moves straight on.
     """
     failures: list[str] = []
+    keys = {"gemini": settings.GEMINI_API_KEY, "groq": settings.GROQ_API_KEY}
     for provider, model in _candidates():
+        if not keys[provider]:
+            failures.append(f"{provider}: no API key set ({provider.upper()}_API_KEY)")
+            continue
         for attempt in range(2):
             try:
                 return call(provider, model)
@@ -207,10 +215,12 @@ def _call_with_fallback(call, what: str):
                 code = _status_code(exc)
                 logger.warning("%s via %s/%s attempt %d failed: %r", what, provider, model, attempt + 1, exc)
                 failures.append(_describe(provider, model, exc))
-                if code in (400, 401, 403, 404, 413):
-                    break  # won't succeed on retry with this provider/model
-                if code == 429 and attempt == 0:
-                    time.sleep(2)
+                # Any error status from the provider (bad key, unknown model, quota, overload)
+                # won't clear on an immediate retry of the SAME model — move to the next
+                # candidate, where backup models are waiting. Only a malformed reply (bad JSON
+                # / schema mismatch, no status code) is worth asking the same model again.
+                if code is not None:
+                    break
     # De-duplicate while keeping order so the message stays short.
     raise LLMError("; ".join(dict.fromkeys(failures)) or "no LLM provider configured")
 
@@ -323,3 +333,54 @@ def chat_reply(messages: list[dict]) -> str:
         ).strip()
 
     return _call_with_fallback(call, "Chat")
+
+
+# System prompt for the "PM AI Chat" learning mentor: deeper, structured, teaching-oriented.
+MENTOR_SYSTEM_INSTRUCTION = (
+    "You are PM Mentor, an expert product manager and teacher inside PM Copilot's learning "
+    "platform. You have 15 years of experience shipping B2B and consumer products, and you "
+    "coach people from complete beginners to senior PMs. Answer questions about product "
+    "management: discovery, strategy, metrics, prioritization, roadmaps, PRDs, user stories, "
+    "agile, go-to-market, analytics, stakeholder management, and PM careers and interviews.\n\n"
+    "How to answer:\n"
+    "- If the learner asks for a specific length or format (e.g. 'in one sentence', 'just "
+    "a list'), follow that exactly and skip everything below.\n"
+    "- Lead with a direct one or two sentence answer, then go deeper.\n"
+    "- Use Markdown: short sections with ### headings, bullet lists, and a table when "
+    "comparing options.\n"
+    "- Make it concrete: include a realistic example (name a product or scenario) and, where "
+    "relevant, the framework or formula (e.g. RICE, JTBD, AARRR, North Star).\n"
+    "- Match the asker's level; define jargon the first time you use it.\n"
+    "- End with a short 'Try it' suggestion: one practical exercise, ideally something they "
+    "can do in PM Copilot's workspace (generate a PRD, score stories with RICE, build a "
+    "roadmap) or a lesson to read in its Learn section.\n"
+    "- Be honest about trade-offs and when 'it depends'. Never invent statistics or quotes.\n"
+    "- If a question is unrelated to product management, answer briefly if harmless and "
+    "steer back to how it connects to building products."
+)
+
+
+def mentor_reply(messages: list[dict], topic: str = "") -> str:
+    """Return a teaching-quality Markdown answer for the PM AI Chat (plain text, not JSON).
+
+    Args:
+        messages: the conversation as [{"role": "user"|"assistant", "content": str}, ...].
+        topic: optional lesson title the learner is studying, to anchor the answer.
+
+    Raises:
+        LLMError: if every provider/model candidate fails.
+    """
+    system = MENTOR_SYSTEM_INSTRUCTION
+    if topic.strip():
+        system += (
+            f"\n\nThe learner is currently studying the lesson \"{topic.strip()}\". Anchor "
+            "your answer to that topic when the question relates to it."
+        )
+
+    def call(provider: str, model: str) -> str:
+        if provider == "groq":
+            return _CALLERS["groq"](messages, None, system, model).strip()
+        history = "\n\n".join(f"{m['role']}: {m['content']}" for m in messages)
+        return _CALLERS["gemini"](f"{history}\n\nassistant:", None, system, model).strip()
+
+    return _call_with_fallback(call, "Mentor")

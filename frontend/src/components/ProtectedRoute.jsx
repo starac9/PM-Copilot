@@ -1,9 +1,9 @@
 // Route guard: wraps pages that require login. If there's no valid session, it redirects
-// to /login; otherwise it renders the page inside the shared Navbar layout.
+// to /login; otherwise it renders the page inside the shared platform layout.
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import Navbar from "./Navbar.jsx";
+import SiteLayout from "./SiteLayout.jsx";
 import Spinner from "./Spinner.jsx";
 
 export default function ProtectedRoute({ children }) {
@@ -23,17 +23,5 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  return (
-    <div className="relative min-h-screen">
-      {/* Faint blueprint grid behind the top of every app page, fading out downward. */}
-      <div
-        aria-hidden="true"
-        className="bg-grid pointer-events-none absolute inset-x-0 top-0 h-80 [mask-image:linear-gradient(to_bottom,#000,transparent)]"
-      />
-      <Navbar />
-      <main className="relative mx-auto max-w-6xl animate-fade-in-up px-4 py-10 sm:px-6">
-        {children}
-      </main>
-    </div>
-  );
+  return <SiteLayout>{children}</SiteLayout>;
 }

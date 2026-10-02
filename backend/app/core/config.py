@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Gemini (optional unless LLM_PROVIDER=gemini).
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.8-flash"
+    # Tried in order after GEMINI_MODEL when it's out of quota / overloaded / retired. Newer
+    # models often have little or no free-tier quota, so older Flash models are the safety net.
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.7-flash,gemini-3.5-flash,gemini-3.5-flash-lite"
 
     # Groq (optional unless LLM_PROVIDER=groq). Free key at https://console.groq.com.
     # The Llama models are Enterprise-only on Groq now (free keys get 404); gpt-oss-120b is

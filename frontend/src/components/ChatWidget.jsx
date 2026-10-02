@@ -4,7 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Maximize2, Sparkles } from "lucide-react";
 
 import api, { apiErrorMessage } from "../api/client.js";
 import Spinner from "./Spinner.jsx";
@@ -81,10 +82,17 @@ export default function ChatWidget() {
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-grass-400/15 text-grass-400">
               <Sparkles size={16} />
             </span>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold">PM Copilot Assistant</p>
               <p className="text-[11px] text-white/80">Ask about the product · FAQ</p>
             </div>
+            <Link
+              to="/ask"
+              title="Open PM AI Chat"
+              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <Maximize2 size={11} /> Full chat
+            </Link>
           </div>
 
           {/* Messages */}

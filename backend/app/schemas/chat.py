@@ -9,7 +9,8 @@ class ChatMessage(BaseModel):
     """One turn in the conversation."""
 
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=2000)
+    # Generous enough for a long mentor answer echoed back as history.
+    content: str = Field(min_length=1, max_length=8000)
 
 
 class ChatRequest(BaseModel):
@@ -22,3 +23,10 @@ class ChatResponse(BaseModel):
     """The assistant's reply."""
 
     reply: str
+
+
+class MentorRequest(BaseModel):
+    """A PM AI Chat turn: longer messages than the FAQ widget, plus an optional lesson."""
+
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+    topic: str = Field(default="", max_length=200, description="Lesson title, if any.")

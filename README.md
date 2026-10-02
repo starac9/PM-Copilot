@@ -1,8 +1,17 @@
 # 🧭 PM Copilot
 
-An AI-powered Product Manager assistant that turns a raw product idea into a structured
-**PRD**, then (in later phases) **user stories**, a **sprint roadmap**, and export files —
-all grounded in your own documents via RAG. Built with FastAPI + React + Groq/Gemini.
+An all-in-one product management platform — **work as a PM, learn the craft, ask the AI**:
+
+- **Workspace** — turn a raw product idea into a structured **PRD**, **user stories** with
+  RICE scores, a **sprint roadmap**, PM artifacts (strategy, OKRs, GTM, …), and export
+  files — all grounded in your own documents via RAG.
+- **Learn** (`/learn`) — a step-by-step course that teaches product management from
+  scratch (7 modules, 23 lessons), with progress tracking, hands-on practice links into the
+  workspace, and "ask the AI about this lesson" prompts.
+- **PM AI Chat** (`/ask`) — a full-page PM mentor that answers product-management
+  questions with structured, example-driven Markdown.
+
+Built with FastAPI + React + Groq/Gemini.
 
 This is a portfolio project: the code favors **clarity over cleverness** and is heavily
 commented to explain the *why* behind each decision.
@@ -68,6 +77,9 @@ never import an AI SDK.
   copy-to-clipboard.
 - **Phase 4 — RAG context** ✅ upload PDFs/Markdown → chunk → embed → pgvector retrieval
   injected into PRD/story generation, with a "grounded in N docs" indicator.
+- **Phase 5 — Learning platform** ✅ public `/learn` course (lessons are plain data in
+  `frontend/src/learn/modules/*.js` — add a lesson by adding an object) and `/ask` PM AI
+  Chat backed by `POST /chat/mentor`.
 
 ---
 
@@ -147,6 +159,8 @@ cd backend
 | POST   | `/projects/{id}/documents` | Upload a PDF/Markdown reference doc (chunk + embed). |
 | GET    | `/projects/{id}/documents` | List a project's reference documents. |
 | DELETE | `/projects/{id}/documents/{doc_id}` | Delete a document and its chunks. |
+| POST   | `/chat` | Public FAQ assistant (landing-page widget). |
+| POST   | `/chat/mentor` | Public PM AI Chat: in-depth answers; optional `topic` (lesson title). |
 
 All `/projects...` routes require the `Authorization: Bearer <token>` header and only ever
 touch data owned by the authenticated user (others' resources return 404).
