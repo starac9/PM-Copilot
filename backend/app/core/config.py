@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Groq (optional unless LLM_PROVIDER=groq). Free key at https://console.groq.com.
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
 
     # --- AI: embeddings (RAG / Phase 4) ---
     # EMBED_PROVIDER picks how document chunks are embedded for vector search.
