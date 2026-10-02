@@ -103,7 +103,7 @@ def generate_project_artifact(
     except LLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI service failed to generate the {spec['label']}. Please try again.",
+            detail=f"AI service failed to generate the {spec['label']} — {exc}",
         ) from exc
 
     # Upsert: overwrite the existing artifact of this type, or create a new one.

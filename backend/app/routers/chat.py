@@ -23,6 +23,6 @@ def chat(payload: ChatRequest) -> ChatResponse:
     except LLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="The assistant is unavailable right now. Please try again.",
+            detail=f"The assistant is unavailable right now — {exc}",
         ) from exc
     return ChatResponse(reply=reply)

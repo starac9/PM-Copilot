@@ -57,7 +57,7 @@ def generate_project_prd(
     except LLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI service failed to generate the PRD. Please try again.",
+            detail=f"AI service failed to generate the PRD — {exc}",
         ) from exc
 
     # Upsert: if a PRD already exists, overwrite its content (regenerate); else create one.

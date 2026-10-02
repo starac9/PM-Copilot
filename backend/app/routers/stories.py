@@ -59,7 +59,7 @@ def generate_project_stories(
     except LLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI service failed to generate stories. Please try again.",
+            detail=f"AI service failed to generate stories — {exc}",
         ) from exc
 
     # Upsert: overwrite existing stories on regenerate, else create the row.
