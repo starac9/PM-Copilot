@@ -26,9 +26,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Custom header the browser is otherwise not allowed to read; it tells the frontend
-    # which uploaded documents grounded a generation (Phase 4 / RAG).
-    expose_headers=["X-Context-Documents"],
+    # Headers the browser is otherwise not allowed to read cross-origin: which uploaded
+    # documents grounded a generation (RAG), and the export download's filename.
+    expose_headers=["X-Context-Documents", "Content-Disposition"],
 )
 
 # Mount the feature routers. Order doesn't matter; prefixes keep paths unique.

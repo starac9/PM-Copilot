@@ -2,12 +2,14 @@
 // shape (a summary + titled, bulleted sections), this one component renders and edits ALL of
 // them — strategy, OKRs, GTM, release notes, and so on.
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Pencil, RefreshCw, Trash2, X } from "lucide-react";
 
 import { apiErrorMessage } from "../api/client.js";
 import { useArtifact, useDeleteArtifact, useSaveArtifact } from "../hooks/useArtifacts.js";
 import { useToast } from "../lib/toast.js";
 import Button from "./Button.jsx";
+import { Eyebrow } from "./PageHeader.jsx";
 import Spinner from "./Spinner.jsx";
 
 export default function ArtifactModal({ projectId, type, label, onClose, onRegenerate, regenerating }) {
@@ -19,12 +21,25 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
   const [draft, setDraft] = useState(null); // non-null while editing
   const editing = draft !== null;
 
-  // Close on Escape for a native-feeling modal.
+  // Escape backs out one level: first out of edit mode, then closes the modal.
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (editing) setDraft(null);
+      else onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, editing]);
+
+  // Lock page scroll behind the modal.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
 
   const content = artifact?.content;
 
@@ -68,19 +83,28 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
     }
   }
 
-  return (
+  // Portaled to <body>: the page's <main> keeps a transform from its entrance animation,
+  // which would otherwise trap this `fixed` overlay inside the content column.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onClick={() => !editing && onClose()}
     >
       <div
-        className="card flex max-h-[85vh] w-full max-w-2xl flex-col p-0"
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className="card flex max-h-[92vh] w-full max-w-2xl animate-fade-in-up flex-col overflow-hidden rounded-b-none p-0 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.6)] sm:max-h-[85vh] sm:rounded-b-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-          <h2 className="text-lg font-semibold text-heading">{label}</h2>
+        <div className="bg-grid flex items-center justify-between border-b border-dashed border-slate-200 px-6 py-4 dark:border-slate-800">
+          <div>
+            <Eyebrow>{editing ? "Editing" : "Artifact"}</Eyebrow>
+            <h2 className="mt-1 text-lg font-semibold text-heading">{label}</h2>
+          </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
             className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
@@ -106,7 +130,7 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
                 />
               </div>
               {draft.sections.map((s, i) => (
-                <div key={i} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                <div key={i} className="card-dashed space-y-2 p-3">
                   <input
                     className="input font-medium"
                     value={s.title}
@@ -123,10 +147,17 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
             </div>
           ) : (
             <div className="space-y-5">
-              <p className="text-sm italic text-muted">{content.summary}</p>
+              <p className="border-l-2 border-grass-400 pl-3 text-sm leading-relaxed text-body">
+                {content.summary}
+              </p>
               {content.sections.map((s, i) => (
                 <div key={i}>
-                  <h4 className="font-semibold text-heading">{s.title}</h4>
+                  <h4 className="flex items-center gap-2 font-semibold text-heading">
+                    <span className="font-mono text-[10px] text-grass-600 dark:text-grass-400">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    {s.title}
+                  </h4>
                   <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-body">
                     {s.body.map((b, j) => (
                       <li key={j}>{b}</li>
@@ -140,7 +171,7 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
 
         {/* Footer actions */}
         {content && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-slate-200 px-6 py-4 dark:border-slate-800">
             {editing ? (
               <div className="flex gap-2">
                 <Button loading={save.isPending} onClick={handleSave}>
@@ -153,24 +184,22 @@ export default function ArtifactModal({ projectId, type, label, onClose, onRegen
             ) : (
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={startEdit}>
-                  Edit
+                  <Pencil size={14} /> Edit
                 </Button>
                 <Button variant="secondary" loading={regenerating} onClick={onRegenerate}>
-                  Regenerate
+                  {!regenerating && <RefreshCw size={14} />} Regenerate
                 </Button>
               </div>
             )}
             {!editing && (
-              <button
-                onClick={handleDelete}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 dark:hover:bg-red-500/10"
-              >
-                Delete
-              </button>
+              <Button variant="ghost-danger" loading={del.isPending} onClick={handleDelete}>
+                {!del.isPending && <Trash2 size={14} />} Delete
+              </Button>
             )}
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

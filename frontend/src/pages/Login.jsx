@@ -15,6 +15,7 @@ export default function Login() {
   async function handleLogin(email, password) {
     try {
       await login(email, password);
+      toast.dismiss(); // clear any earlier "wrong password" error
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error) {

@@ -15,6 +15,7 @@ export default function Register() {
   async function handleRegister(email, password) {
     try {
       await register(email, password);
+      toast.dismiss(); // clear any earlier "wrong password" error
       toast.success("Account created.");
       navigate("/dashboard");
     } catch (error) {

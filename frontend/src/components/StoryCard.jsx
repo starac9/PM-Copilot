@@ -16,16 +16,17 @@ const RICE_FIELDS = [
 export default function StoryCard({ story, onChange }) {
   const score = riceScore(story);
 
-  // Update one field, coercing to a number so the score math stays numeric.
-  const setField = (key, value) => onChange({ ...story, [key]: Number(value) });
+  // Keep the raw input (so a field can be cleared and retyped); riceScore() coerces for the
+  // live score and StoriesView converts everything back to numbers on save.
+  const setField = (key, value) => onChange({ ...story, [key]: value });
 
   return (
-    <div className="card card-hover space-y-3 p-4">
+    <div className="card space-y-3 p-4 transition hover:border-slate-300 dark:hover:border-slate-700">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-heading">{story.title}</p>
         {/* The live RICE score — the whole point of doing this in the browser. */}
-        <span className="badge shrink-0 bg-grass-400 text-ink shadow-sm">
-          RICE {score.toFixed(0)}
+        <span className="badge shrink-0 bg-grass-400 font-mono text-ink shadow-sm">
+          RICE {score.toFixed(score < 10 ? 1 : 0)}
         </span>
       </div>
 
@@ -42,19 +43,19 @@ export default function StoryCard({ story, onChange }) {
         </ul>
       )}
 
-      <div className="grid grid-cols-4 gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="rule grid grid-cols-2 gap-2 pt-3 sm:grid-cols-4">
         {RICE_FIELDS.map(({ key, label, hint }) => (
-          <label key={key} className="text-xs font-medium text-muted">
+          <label key={key} className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted">
             {label}
             <input
               type="number"
               step="any"
               min="0"
-              className="input mt-1 px-2 py-1.5 text-sm"
+              className="input mt-1 px-2 py-1.5 font-sans text-sm normal-case tracking-normal"
               value={story[key]}
               onChange={(e) => setField(key, e.target.value)}
             />
-            <span className="mt-0.5 block text-[10px] font-normal text-slate-400">{hint}</span>
+            <span className="mt-0.5 block normal-case tracking-normal text-slate-400">{hint}</span>
           </label>
         ))}
       </div>

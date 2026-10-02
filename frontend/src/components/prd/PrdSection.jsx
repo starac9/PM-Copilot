@@ -17,14 +17,12 @@ export default function PrdSection({
   children,
 }) {
   return (
-    <section className="card p-6">
+    <section
+      className={`card p-6 transition ${editing ? "border-grass-300 ring-4 ring-grass-100 dark:border-grass-600/60 dark:ring-grass-500/10" : ""}`}
+    >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          {icon && (
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
-              {icon}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          {icon && <span className="icon-tile h-8 w-8">{icon}</span>}
           <h3 className="text-base font-semibold text-heading">{title}</h3>
         </div>
         {editing ? (
@@ -37,8 +35,8 @@ export default function PrdSection({
             </Button>
           </div>
         ) : (
-          <Button variant="ghost" onClick={onEdit}>
-            <Pencil size={14} /> Edit
+          <Button variant="ghost" size="sm" onClick={onEdit}>
+            <Pencil size={13} /> Edit
           </Button>
         )}
       </div>

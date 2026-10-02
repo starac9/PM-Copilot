@@ -11,6 +11,7 @@ const api = axios.create({ baseURL });
 
 // Key under which we persist the JWT in the browser's localStorage.
 export const TOKEN_KEY = "pmcopilot_token";
+export const USER_KEY = "pmcopilot_user";
 
 // Request interceptor: before each request, attach the saved token (if any).
 api.interceptors.request.use((config) => {
@@ -37,6 +38,7 @@ api.interceptors.response.use(
     );
     if (error.response && error.response.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
       // Full reload to /login clears any stale in-memory state cleanly.
       if (window.location.pathname !== "/login") {
         window.location.assign("/login");
@@ -58,7 +60,18 @@ export function apiErrorMessage(error, fallback = "Something went wrong.") {
     const where = error.issues[0]?.path?.join(".");
     return `The server returned unexpected data${where ? ` (${where})` : ""}.`;
   }
-  return error?.response?.data?.detail || error?.message || fallback;
+  const detail = error?.response?.data?.detail;
+  // FastAPI validation errors (422) send `detail` as a list of {loc, msg} objects. Rendering
+  // that array in a toast would crash React, so surface the first message instead.
+  if (Array.isArray(detail)) {
+    const first = detail[0];
+    const field = first?.loc?.filter((p) => p !== "body").join(".");
+    return first?.msg ? `${field ? `${field}: ` : ""}${first.msg}` : fallback;
+  }
+  if (typeof detail === "string") return detail;
+  // Network failure (backend down / CORS) has no response at all.
+  if (error?.request && !error?.response) return "Can't reach the server. Is the backend running?";
+  return error?.message || fallback;
 }
 
 export default api;

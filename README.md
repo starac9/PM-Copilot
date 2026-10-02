@@ -52,7 +52,7 @@ never import an AI SDK.
 | Frontend  | React (Vite), Tailwind CSS, React Router, axios |
 | Backend   | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2 |
 | Database  | PostgreSQL + pgvector (Neon serverless) |
-| AI (text) | Provider-isolated: **Groq** (`llama-3.3-70b`, free) or **Gemini** (`gemini-2.0-flash`) |
+| AI (text) | Provider-isolated: **Groq** (`llama-3.3-70b`, free) or **Gemini** (`gemini-3.8-flash`) |
 | AI (embed)| **fastembed** local `bge-small-en` (free, offline) or Gemini `text-embedding-004` |
 | Auth      | JWT (email + password), bcrypt password hashing |
 

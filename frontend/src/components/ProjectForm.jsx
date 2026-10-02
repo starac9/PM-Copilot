@@ -42,7 +42,7 @@ export default function ProjectForm({ onSubmit, onCancel, submitting }) {
           placeholder="e.g. FocusFlow"
           {...register("title")}
         />
-        {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title.message}</p>}
+        {errors.title && <p className="field-error">{errors.title.message}</p>}
       </div>
 
       <div>
@@ -56,7 +56,7 @@ export default function ProjectForm({ onSubmit, onCancel, submitting }) {
           {...register("description")}
         />
         {errors.description && (
-          <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
+          <p className="field-error">{errors.description.message}</p>
         )}
       </div>
 
@@ -71,7 +71,7 @@ export default function ProjectForm({ onSubmit, onCancel, submitting }) {
           {...register("target_audience")}
         />
         {errors.target_audience && (
-          <p className="mt-1 text-xs text-red-600">{errors.target_audience.message}</p>
+          <p className="field-error">{errors.target_audience.message}</p>
         )}
       </div>
 

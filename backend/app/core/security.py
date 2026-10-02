@@ -21,17 +21,23 @@ from jose import JWTError, jwt
 from app.core.config import settings
 
 
+def _password_bytes(plain_password: str) -> bytes:
+    """bcrypt only uses the first 72 bytes; bcrypt>=5 raises instead of truncating, so we
+    truncate explicitly (same result older versions produced, so existing hashes still match)."""
+    return plain_password.encode("utf-8")[:72]
+
+
 def hash_password(plain_password: str) -> str:
     """Hash a plain-text password for storage. Returns a string safe to save in the DB."""
     # bcrypt works on bytes; we encode in, decode out to store as text.
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(plain_password.encode("utf-8"), salt)
+    hashed = bcrypt.hashpw(_password_bytes(plain_password), salt)
     return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Check a login attempt against the stored hash. True if they match."""
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    return bcrypt.checkpw(_password_bytes(plain_password), hashed_password.encode("utf-8"))
 
 
 def create_access_token(subject: str) -> str:

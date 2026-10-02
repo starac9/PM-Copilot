@@ -15,14 +15,12 @@ export default function EpicColumn({ epic, onStoryChange }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
+      <div className="flex items-center gap-2.5 border-b border-dashed border-slate-200 pb-3 dark:border-slate-800">
+        <span className="logo-mark h-7 w-7">
           <Layers size={14} strokeWidth={1.75} />
         </span>
-        <h3 className="text-sm font-bold uppercase tracking-wide text-body">{epic.name}</h3>
-        <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-          {epic.stories.length}
-        </span>
+        <h3 className="min-w-0 truncate text-sm font-semibold text-heading">{epic.name}</h3>
+        <span className="badge badge-neutral font-mono">{epic.stories.length}</span>
       </div>
       {ordered.map(({ story, index }) => (
         <StoryCard

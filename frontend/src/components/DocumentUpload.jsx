@@ -3,7 +3,7 @@
 // This component lists the uploaded docs (via useDocuments) and lets the user add or remove
 // them (upload/delete mutations invalidate the list so it stays in sync).
 import { useRef } from "react";
-import { FileText, Library, Upload } from "lucide-react";
+import { FileText, Library, Upload, X } from "lucide-react";
 
 import { apiErrorMessage } from "../api/client.js";
 import {
@@ -44,16 +44,18 @@ export default function DocumentUpload({ projectId }) {
   }
 
   return (
-    <div className="card space-y-3 p-5">
+    <div className="card space-y-4 p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
+          <span className="icon-tile h-9 w-9">
             <Library size={16} strokeWidth={1.75} />
           </span>
           <div>
             <h3 className="text-base font-semibold text-heading">Reference documents</h3>
             <p className="text-xs text-muted">
-              PDF or Markdown — grounds PRD &amp; story generation in your own domain (RAG).
+              {documents.length === 0
+                ? "Optional · PDF or Markdown, up to 10 MB — grounds every generation in your own domain."
+                : `${documents.length} document${documents.length === 1 ? "" : "s"} grounding PRDs, stories, and workspace artifacts.`}
             </p>
           </div>
         </div>
@@ -62,7 +64,8 @@ export default function DocumentUpload({ projectId }) {
           loading={uploadDocument.isPending}
           onClick={() => fileInput.current?.click()}
         >
-          <Upload size={15} strokeWidth={2} /> Upload
+          {!uploadDocument.isPending && <Upload size={15} strokeWidth={2} />}
+          {uploadDocument.isPending ? "Embedding…" : "Upload"}
         </Button>
         {/* Hidden native input; the styled button triggers it. */}
         <input
@@ -74,20 +77,27 @@ export default function DocumentUpload({ projectId }) {
         />
       </div>
 
-      {documents.length === 0 ? (
-        <p className="text-sm text-muted">No documents yet.</p>
-      ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+      {documents.length > 0 && (
+        <ul className="rule flex flex-wrap gap-2 pt-4">
           {documents.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between py-2">
-              <span className="flex items-center gap-1.5 text-sm text-body">
-                <FileText size={14} strokeWidth={1.75} className="text-slate-400" />
-                {doc.filename}
-                <span className="ml-1 text-xs text-muted">{doc.chunk_count} chunks</span>
+            <li
+              key={doc.id}
+              className="flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-[#FAFAF7] py-1 pl-2.5 pr-1 text-sm text-body dark:border-slate-700 dark:bg-slate-950"
+            >
+              <FileText size={14} strokeWidth={1.75} className="shrink-0 text-grass-600 dark:text-grass-400" />
+              <span className="truncate">{doc.filename}</span>
+              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                {doc.chunk_count} chunk{doc.chunk_count === 1 ? "" : "s"}
               </span>
-              <Button variant="ghost" onClick={() => handleDelete(doc)}>
-                Remove
-              </Button>
+              <button
+                type="button"
+                onClick={() => handleDelete(doc)}
+                disabled={deleteDocument.isPending}
+                aria-label={`Remove ${doc.filename}`}
+                className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              >
+                <X size={13} />
+              </button>
             </li>
           ))}
         </ul>

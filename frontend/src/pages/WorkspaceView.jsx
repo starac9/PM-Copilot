@@ -9,8 +9,11 @@ import {
   ClipboardList,
   Compass,
   FileText,
+  Eye,
   Megaphone,
+  RefreshCw,
   Rocket,
+  Sparkles,
   Search,
   Target,
   TrendingUp,
@@ -21,6 +24,7 @@ import { apiErrorMessage } from "../api/client.js";
 import ArtifactModal from "../components/ArtifactModal.jsx";
 import Button from "../components/Button.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { SectionHeader } from "../components/PageHeader.jsx";
 import ProjectHeader from "../components/ProjectHeader.jsx";
 import { Skeleton } from "../components/Skeleton.jsx";
 import { useGenerateArtifact, useWorkspace } from "../hooks/useArtifacts.js";
@@ -42,6 +46,9 @@ export default function WorkspaceView() {
   const { projectId } = useParams();
   const toast = useToast();
   const [openType, setOpenType] = useState(null);
+  // Types currently generating. Tracked here (not via the mutation's `variables`, which only
+  // remembers the latest call) so several cards can generate at once with correct spinners.
+  const [pendingTypes, setPendingTypes] = useState(() => new Set());
 
   const { data, isLoading, isError, error } = useWorkspace(projectId);
   const generate = useGenerateArtifact(projectId);
@@ -51,97 +58,137 @@ export default function WorkspaceView() {
   // type -> summary, for the "already generated" state.
   const generatedMap = new Map((data?.generated ?? []).map((g) => [g.type, g]));
 
+  const setPending = (type, on) =>
+    setPendingTypes((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(type);
+      else next.delete(type);
+      return next;
+    });
+
   async function handleGenerate(type) {
+    const label = catalog.find((c) => c.key === type)?.label ?? "Artifact";
+    setPending(type, true);
     try {
       await generate.mutateAsync(type);
-      toast.success("Generated.");
+      toast.success(`${label} generated.`);
       setOpenType(type); // open it so the user sees the result immediately
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Could not generate. Try again."));
+      toast.error(apiErrorMessage(err, `Could not generate the ${label}. Try again.`));
+    } finally {
+      setPending(type, false);
     }
   }
 
   const openLabel = data?.catalog?.find((c) => c.key === openType)?.label;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <ProjectHeader projectId={projectId} />
 
-      <div>
-        <h2 className="text-lg font-semibold text-heading">PM workspace</h2>
-        <p className="text-sm text-muted">
-          Everything a PM produces — generated from your idea, PRD, and uploaded docs.
-        </p>
-      </div>
-
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="card space-y-3 p-5">
-              <Skeleton className="h-10 w-10 rounded-xl" />
-              <Skeleton className="h-5 w-1/2" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          ))}
-        </div>
-      ) : isError ? (
-        <EmptyState
-          icon={AlertTriangle}
-          title="Couldn't load the workspace"
-          description={apiErrorMessage(error, "Please try again in a moment.")}
+      <section className="space-y-5">
+        <SectionHeader
+          title="PM workspace"
+          description="Everything else a PM produces — generated from your idea, PRD, and uploaded docs."
+          actions={
+            catalog.length > 0 && (
+              <span className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-wider text-slate-400">
+                <span className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <span
+                    className="block h-full rounded-full bg-grass-400 transition-all"
+                    style={{ width: `${(generatedMap.size / catalog.length) * 100}%` }}
+                  />
+                </span>
+                {generatedMap.size}/{catalog.length} ready
+              </span>
+            )
+          }
         />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {catalog.map((c) => {
-            const Icon = ICONS[c.key] ?? FileText;
-            const gen = generatedMap.get(c.key);
-            const pending = generate.isPending && generate.variables === c.key;
-            return (
-              <div key={c.key} className="card flex flex-col gap-3 p-5">
-                <div className="flex items-start justify-between">
-                  <span className="logo-mark h-10 w-10">
-                    <Icon size={18} strokeWidth={1.75} />
-                  </span>
-                  {gen && (
-                    <span className="badge bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Ready
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-heading">{c.label}</h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted">
-                    {gen ? gen.summary : c.description}
-                  </p>
-                </div>
-                <div className="mt-auto flex gap-2 pt-2">
-                  {gen ? (
-                    <>
-                      <Button variant="secondary" onClick={() => setOpenType(c.key)}>
-                        View
-                      </Button>
-                      <Button variant="ghost" loading={pending} onClick={() => handleGenerate(c.key)}>
-                        Regenerate
-                      </Button>
-                    </>
-                  ) : (
-                    <Button loading={pending} onClick={() => handleGenerate(c.key)}>
-                      Generate
-                    </Button>
-                  )}
-                </div>
+
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="card space-y-3 p-5">
+                <Skeleton className="h-10 w-10 rounded-lg" />
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-full" />
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : isError ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load the workspace"
+            description={apiErrorMessage(error, "Please try again in a moment.")}
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {catalog.map((c) => {
+              const Icon = ICONS[c.key] ?? FileText;
+              const gen = generatedMap.get(c.key);
+              const pending = pendingTypes.has(c.key);
+              return (
+                <div
+                  key={c.key}
+                  className={`flex flex-col gap-3 p-5 transition ${
+                    gen ? "card hover:border-slate-300 dark:hover:border-slate-700" : "card-dashed"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <span className={gen ? "logo-mark h-10 w-10" : "icon-tile h-10 w-10"}>
+                      <Icon size={18} strokeWidth={1.75} />
+                    </span>
+                    {pending ? (
+                      <span className="badge badge-neutral">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-grass-500" /> Generating
+                      </span>
+                    ) : gen ? (
+                      <span className="badge badge-success">
+                        <span className="h-1.5 w-1.5 rounded-full bg-grass-500" /> Ready
+                      </span>
+                    ) : null}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-heading">{c.label}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted">
+                      {gen ? gen.summary : c.description}
+                    </p>
+                  </div>
+                  <div className="mt-auto flex gap-2 pt-2">
+                    {gen ? (
+                      <>
+                        <Button variant="secondary" size="sm" onClick={() => setOpenType(c.key)}>
+                          <Eye size={13} /> View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={pending}
+                          onClick={() => handleGenerate(c.key)}
+                        >
+                          {!pending && <RefreshCw size={13} />} Regenerate
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" loading={pending} onClick={() => handleGenerate(c.key)}>
+                        {!pending && <Sparkles size={13} />}
+                        {pending ? "Generating…" : "Generate"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {openType && (
         <ArtifactModal
           projectId={projectId}
           type={openType}
           label={openLabel}
-          regenerating={generate.isPending && generate.variables === openType}
+          regenerating={pendingTypes.has(openType)}
           onRegenerate={() => handleGenerate(openType)}
           onClose={() => setOpenType(null)}
         />

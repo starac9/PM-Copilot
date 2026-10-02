@@ -22,6 +22,7 @@ export default function GoogleSignInButton() {
   async function handleSuccess(credentialResponse) {
     try {
       await loginWithGoogle(credentialResponse.credential);
+      toast.dismiss();
       toast.success("Signed in with Google.");
       navigate("/dashboard");
     } catch (err) {

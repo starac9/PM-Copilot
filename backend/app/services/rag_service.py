@@ -101,7 +101,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         return [vector.tolist() for vector in vectors]
     except Exception as exc:  # noqa: BLE001 - surface any embedding failure uniformly
         logger.warning("Embedding failed: %s", exc)
-        raise RagError(f"Embedding failed: {exc}") from exc
+        raise RagError(f"Embedding service failed: {exc}") from exc
 
 
 def ingest_document(db: Session, project_id: int, filename: str, raw_text: str) -> Document:
@@ -162,6 +162,9 @@ def retrieve_context(db: Session, project_id: int, query: str, k: int = 5) -> di
         ).all()
     except Exception as exc:  # noqa: BLE001 - retrieval must degrade gracefully
         logger.warning("Context retrieval failed: %s", exc)
+        # A failed query leaves a Postgres transaction aborted; roll back so the caller can
+        # still save the generated PRD/stories on this same session.
+        db.rollback()
         return {"context": "", "documents": []}
 
     context = "\n---\n".join(text for text, _ in rows)

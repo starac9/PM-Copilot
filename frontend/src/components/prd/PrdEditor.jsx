@@ -7,13 +7,11 @@
 // add/remove-row widgets and keeps the code readable, which matters for this project.
 import Button from "../Button.jsx";
 
-// Convert between a string list and newline-separated text for textarea editing.
+// Convert between a string list and newline-separated text for textarea editing. Lines are
+// kept raw while typing (trimming here would eat spaces and Enter keystrokes); PrdViewer
+// cleans blank lines and whitespace once, at save time.
 const listToLines = (list) => (list || []).join("\n");
-const linesToList = (text) =>
-  text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+const linesToList = (text) => text.split("\n");
 
 export default function PrdEditor({ sectionKey, draft, setDraft }) {
   // Small helper to update one top-level field of the draft immutably.
@@ -32,7 +30,7 @@ export default function PrdEditor({ sectionKey, draft, setDraft }) {
   if (sectionKey === "success_metrics") {
     return (
       <div>
-        <p className="mb-1 text-xs text-slate-400">One metric per line.</p>
+        <p className="mb-1.5 text-xs text-muted">One metric per line.</p>
         <textarea
           className="input min-h-[120px]"
           value={listToLines(draft.success_metrics)}
@@ -45,7 +43,7 @@ export default function PrdEditor({ sectionKey, draft, setDraft }) {
   if (sectionKey === "risks_and_assumptions") {
     return (
       <div>
-        <p className="mb-1 text-xs text-slate-400">One risk or assumption per line.</p>
+        <p className="mb-1.5 text-xs text-muted">One risk or assumption per line.</p>
         <textarea
           className="input min-h-[120px]"
           value={listToLines(draft.risks_and_assumptions)}
@@ -98,10 +96,10 @@ export default function PrdEditor({ sectionKey, draft, setDraft }) {
     return (
       <div className="space-y-4">
         {draft.personas.map((persona, i) => (
-          <div key={i} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+          <div key={i} className="card-dashed p-4">
             <div className="mb-2 flex items-center justify-between">
               <label className="label mb-0">Persona {i + 1}</label>
-              <Button variant="ghost" onClick={() => removePersona(i)}>
+              <Button variant="ghost-danger" size="sm" onClick={() => removePersona(i)}>
                 Remove
               </Button>
             </div>

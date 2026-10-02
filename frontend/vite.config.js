@@ -6,6 +6,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5174,
+    port: 5173,
+    // Fail loudly instead of silently moving to 5174, which CORS would then block.
+    strictPort: true,
   },
 });

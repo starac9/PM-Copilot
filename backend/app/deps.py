@@ -36,7 +36,7 @@ def get_current_user(
     )
 
     user_id = decode_access_token(credentials.credentials)
-    if user_id is None:
+    if user_id is None or not str(user_id).isdigit():
         raise credentials_error
 
     user = db.get(User, int(user_id))

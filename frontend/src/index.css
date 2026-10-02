@@ -36,35 +36,75 @@
 }
 
 @layer components {
+  /* ── Design system ─────────────────────────────────────────────────────────
+     The app shares the landing page's "blueprint" language: a warm off-white canvas, flat
+     white surfaces with hairline borders, dashed dividers, monospace eyebrow labels, and a
+     single grass-green accent. Everything below is the vocabulary pages are built from. */
+
   /* Reusable input style so every form field looks consistent. */
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white/80 px-3.5 py-2.5 text-sm
-      text-slate-800 shadow-sm backdrop-blur transition
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm
+      text-slate-800 shadow-sm transition
       placeholder:text-slate-400
-      focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100
-      dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100
-      dark:placeholder:text-slate-500 dark:focus:border-brand-500 dark:focus:ring-brand-500/20;
+      focus:border-grass-400 focus:outline-none focus:ring-4 focus:ring-grass-100
+      dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100
+      dark:placeholder:text-slate-500 dark:focus:border-grass-500 dark:focus:ring-grass-500/15;
   }
 
   .label {
     @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
   }
 
+  /* Inline validation message under a form field. */
+  .field-error {
+    @apply mt-1 text-xs text-red-600 dark:text-red-400;
+  }
+
   /* Card surface used for projects, PRD sections, and forms. */
   .card {
-    @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-soft backdrop-blur
-      dark:border-slate-800 dark:bg-slate-900/70;
+    @apply rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]
+      dark:border-slate-800 dark:bg-slate-900;
   }
 
   /* An interactive card that lifts on hover (project tiles, etc.). */
   .card-hover {
-    @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift
-      dark:hover:border-brand-500/40;
+    @apply transition duration-200 hover:-translate-y-0.5 hover:border-grass-300
+      hover:shadow-[0_20px_50px_-28px_rgba(15,23,42,0.45)]
+      dark:hover:border-grass-600/60;
   }
 
-  /* Small pill badge. */
+  /* A dashed "schematic" frame — empty states and placeholders, as on the landing mocks. */
+  .card-dashed {
+    @apply rounded-xl border border-dashed border-slate-300 bg-white/60
+      dark:border-slate-700 dark:bg-slate-900/40;
+  }
+
+  /* Faint blueprint grid backdrop (same as the landing page's mock frames). */
+  .bg-grid {
+    background-image: linear-gradient(rgb(100 116 139 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(100 116 139 / 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  /* Monospace section eyebrow, rendered by <Eyebrow> as "— LABEL". */
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  /* Hairline dashed rule between page regions. */
+  .rule {
+    @apply border-t border-dashed border-slate-200 dark:border-slate-800;
+  }
+
+  /* Small pill badge + its semantic tones. */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-success {
+    @apply bg-grass-100 text-grass-700 dark:bg-grass-500/10 dark:text-grass-300;
+  }
+  .badge-neutral {
+    @apply bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400;
   }
 
   /* Gradient wordmark / headings. */
@@ -74,18 +114,25 @@
 
   /* The brand icon tile — a dark ink square with a green line icon. */
   .logo-mark {
-    @apply flex items-center justify-center rounded-xl bg-ink text-grass-400;
+    @apply flex shrink-0 items-center justify-center rounded-lg bg-ink text-grass-400
+      dark:bg-slate-950 dark:ring-1 dark:ring-slate-800;
+  }
+
+  /* A lighter icon tile for secondary headings (PRD sections, epics, documents). */
+  .icon-tile {
+    @apply flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-[#FAFAF7]
+      text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300;
   }
 
   /* Button-look classes for <Link>/<a> elements (the Button.jsx component covers <button>). */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-grass-400 px-4 py-2.5
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-grass-400 px-4 py-2.5
       text-sm font-semibold text-ink shadow-sm transition hover:bg-grass-500 active:scale-[0.98];
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white
       px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50
-      dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
   }
 
   /* Compact markdown styling for the chat bubble (bold, lists, paragraphs, code). */

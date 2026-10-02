@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }) {
   // the login page for a split second.
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-brand-600">
+      <div className="flex min-h-screen items-center justify-center text-grass-500">
         <Spinner className="h-8 w-8" />
       </div>
     );
@@ -24,9 +24,16 @@ export default function ProtectedRoute({ children }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen">
+      {/* Faint blueprint grid behind the top of every app page, fading out downward. */}
+      <div
+        aria-hidden="true"
+        className="bg-grid pointer-events-none absolute inset-x-0 top-0 h-80 [mask-image:linear-gradient(to_bottom,#000,transparent)]"
+      />
       <Navbar />
-      <main className="mx-auto max-w-6xl animate-fade-in-up px-4 py-8">{children}</main>
+      <main className="relative mx-auto max-w-6xl animate-fade-in-up px-4 py-10 sm:px-6">
+        {children}
+      </main>
     </div>
   );
 }

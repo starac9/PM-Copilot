@@ -18,6 +18,7 @@ import Button from "./Button.jsx";
 import GoogleSignInButton from "./GoogleSignInButton.jsx";
 import Logo from "./Logo.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
+import Wordmark from "./Wordmark.jsx";
 
 const FEATURES = [
   { Icon: FileText, title: "Structured PRDs", text: "Turn a one-line idea into a full PRD in seconds." },
@@ -47,13 +48,16 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
 
       {/* Left: branded gradient feature panel (desktop only). */}
       <div className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        {/* Decorative soft glows — one brand-green for accent. */}
+        {/* Blueprint grid + one soft brand-green glow, echoing the landing page. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255/0.05)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_top_left,#000_30%,transparent_75%)]"
+        />
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-grass-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
 
         <Link to="/" className="relative flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
-            <Logo size={28} />
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-grass-400 text-ink">
+            <Logo size={20} />
           </span>
           <span className="text-xl font-bold tracking-tight">
             PM <span className="font-serif font-normal italic">copilot</span>
@@ -61,21 +65,33 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
         </Link>
 
         <div className="relative space-y-8">
-          <h2 className="max-w-md text-3xl font-bold leading-tight">
-            Your AI product manager, from idea to sprint plan.
-          </h2>
-          <div className="grid max-w-md gap-4 sm:grid-cols-2">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/50">
+              <span className="text-grass-400">— </span>AI product management
+            </p>
+            <h2 className="mt-4 max-w-md text-4xl font-semibold leading-[1.1] tracking-tight">
+              From idea to a{" "}
+              <span className="box-decoration-clone rounded-[3px] bg-grass-400 px-2 text-ink">
+                sprint plan
+              </span>
+              .
+            </h2>
+          </div>
+          <div className="grid max-w-md gap-3 sm:grid-cols-2">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <f.Icon size={22} strokeWidth={1.75} className="mb-2" />
+              <div
+                key={f.title}
+                className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] p-4"
+              >
+                <f.Icon size={20} strokeWidth={1.75} className="mb-2.5 text-grass-400" />
                 <div className="font-semibold">{f.title}</div>
-                <div className="text-sm text-white/80">{f.text}</div>
+                <div className="mt-0.5 text-sm text-white/60">{f.text}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="relative text-sm text-white/70">
+        <div className="relative font-mono text-[11px] uppercase tracking-wider text-white/40">
           Built with FastAPI · React · Groq — a portfolio project.
         </div>
       </div>
@@ -84,12 +100,12 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
       <div className="flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md animate-fade-in-up">
           {/* Mobile brand header (panel is hidden on small screens). */}
-          <div className="mb-6 flex justify-center lg:hidden">
-            <Logo size={48} />
-          </div>
+          <Link to="/" className="mb-8 flex justify-center lg:hidden">
+            <Wordmark size={26} />
+          </Link>
 
           <div className="mb-6">
-            <h1 className="text-2xl font-bold tracking-tight text-heading">{title}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-heading">{title}</h1>
             <p className="mt-1 text-sm text-muted">{subtitle}</p>
           </div>
 
@@ -106,7 +122,7 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
                 {...register("email")}
               />
               {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+                <p className="field-error">{errors.email.message}</p>
               )}
             </div>
             <div>
@@ -121,7 +137,7 @@ export default function AuthForm({ title, subtitle, submitLabel, onSubmit, foote
                 {...register("password")}
               />
               {errors.password && (
-                <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+                <p className="field-error">{errors.password.message}</p>
               )}
             </div>
             <Button type="submit" loading={isSubmitting} className="w-full">

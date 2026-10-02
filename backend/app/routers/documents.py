@@ -20,6 +20,9 @@ from app.services.rag_service import RagError, extract_text, ingest_document
 
 router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documents"])
 
+# Every chunk is embedded synchronously during the request, so cap uploads to keep that fast.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
 
 def _chunk_count(db: Session, document_id: int) -> int:
     """Count a document's chunks with a COUNT query.
@@ -53,7 +56,13 @@ def upload_document(
     """Upload a PDF or Markdown file, chunk + embed it, and store it for retrieval."""
     project = get_owned_project(project_id, user, db)
 
-    data = file.file.read()
+    # Read one byte past the cap so oversized files are rejected without loading them whole.
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File is too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB).",
+        )
     try:
         text = extract_text(file.filename, data)
         document = ingest_document(db, project.id, file.filename, text)

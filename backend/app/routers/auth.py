@@ -8,6 +8,8 @@ frontend can log the user in immediately after registering.
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,6 +22,12 @@ from app.schemas.user import GoogleAuthIn, Token, UserCreate, UserOut
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _find_user_by_email(db: Session, email: str) -> User | None:
+    """Case-insensitive lookup, so "Me@x.com" and "me@x.com" are the same account (and
+    accounts created before emails were normalized to lowercase still match)."""
+    return db.query(User).filter(func.lower(User.email) == email.lower()).first()
+
+
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     """Create a new account and return a login token.
@@ -27,16 +35,20 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     Fails with 409 if the email is already taken, so the frontend can show a clear
     "email already registered" message.
     """
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Email already registered."
-        )
+    email_taken = HTTPException(
+        status_code=status.HTTP_409_CONFLICT, detail="Email already registered."
+    )
+    if _find_user_by_email(db, payload.email) is not None:
+        raise email_taken
 
     # Store only the hash, never the raw password.
-    user = User(email=payload.email, hashed_password=hash_password(payload.password))
+    user = User(email=payload.email.lower(), hashed_password=hash_password(payload.password))
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:  # two concurrent signups with the same email
+        db.rollback()
+        raise email_taken from exc
     db.refresh(user)  # reload so user.id (assigned by the DB) is populated
 
     token = create_access_token(subject=user.id)
@@ -78,9 +90,9 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_db)) -> Token:
 
     # Find-or-create by email. Google users get an unusable random password hash (they
     # never log in with a password), so the NOT NULL column is satisfied without a real one.
-    user = db.query(User).filter(User.email == email).first()
+    user = _find_user_by_email(db, email)
     if user is None:
-        user = User(email=email, hashed_password=hash_password(secrets.token_urlsafe(32)))
+        user = User(email=email.lower(), hashed_password=hash_password(secrets.token_urlsafe(32)))
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -96,7 +108,7 @@ def login(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     We return the SAME 401 whether the email is unknown or the password is wrong, so an
     attacker can't tell which emails are registered.
     """
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = _find_user_by_email(db, payload.email)
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password."

@@ -23,6 +23,28 @@ const SECTIONS = [
   { key: "risks_and_assumptions", title: "Risks & assumptions", Icon: AlertTriangle },
 ];
 
+// Trim list items and drop blank lines left over from editing (see PrdEditor).
+const cleanList = (items) => items.map((item) => item.trim()).filter(Boolean);
+
+function cleanPrd(prd) {
+  return {
+    ...prd,
+    problem_statement: prd.problem_statement.trim(),
+    personas: prd.personas.map((p) => ({
+      ...p,
+      name: p.name.trim(),
+      description: p.description.trim(),
+      pain_points: cleanList(p.pain_points),
+    })),
+    success_metrics: cleanList(prd.success_metrics),
+    scope: {
+      in_scope: cleanList(prd.scope.in_scope),
+      out_of_scope: cleanList(prd.scope.out_of_scope),
+    },
+    risks_and_assumptions: cleanList(prd.risks_and_assumptions),
+  };
+}
+
 // A reusable bulleted list for the read-only view.
 function BulletList({ items }) {
   return (
@@ -55,7 +77,7 @@ export default function PrdViewer({ projectId, content }) {
     try {
       // Send the full document; the backend validates it against PRDContent and the hook
       // writes the returned content back into the query cache.
-      await updatePrd.mutateAsync(draft);
+      await updatePrd.mutateAsync(cleanPrd(draft));
       setEditingKey(null);
       setDraft(null);
       toast.success("Saved.");

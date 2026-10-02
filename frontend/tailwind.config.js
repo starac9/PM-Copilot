@@ -54,7 +54,9 @@ export default {
       keyframes: {
         "fade-in-up": {
           "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+          // `none` (not translateY(0)): the fill-mode keeps the last frame, and any transform
+          // would make the element a containing block that traps `position: fixed` children.
+          "100%": { opacity: "1", transform: "none" },
         },
         shimmer: {
           "100%": { transform: "translateX(100%)" },

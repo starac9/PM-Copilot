@@ -7,12 +7,13 @@
 // This page is rendered INSIDE ProtectedRoute, which already provides the Navbar and the
 // centered page container — so here we only render the page's own content.
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AlertTriangle, FileText, Plus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { AlertTriangle, ArrowRight, FileText, Plus, Trash2 } from "lucide-react";
 
 import { apiErrorMessage } from "../api/client.js";
 import Button from "../components/Button.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import ProjectForm from "../components/ProjectForm.jsx";
 import { ProjectGridSkeleton } from "../components/Skeleton.jsx";
 import {
@@ -21,6 +22,8 @@ import {
   useProjects,
 } from "../hooks/useProjects.js";
 import { useToast } from "../lib/toast.js";
+
+const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 export default function Dashboard() {
   const [creating, setCreating] = useState(false); // is the "new project" form open?
@@ -53,21 +56,33 @@ export default function Dashboard() {
     }
   }
 
+  const withPrd = projects.filter((p) => p.has_prd).length;
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-heading">Your projects</h1>
-          <p className="mt-1 text-sm text-muted">
-            Turn a product idea into a full PRD, backlog, and roadmap.
+      <PageHeader
+        eyebrow="Workspace"
+        title="Your projects"
+        description="Turn a product idea into a full PRD, backlog, and roadmap."
+        actions={
+          !creating && (
+            <Button onClick={() => setCreating(true)}>
+              <Plus size={16} strokeWidth={2.5} /> New project
+            </Button>
+          )
+        }
+      >
+        {projects.length > 0 && (
+          <p className="mt-4 flex items-center gap-4 font-mono text-[11px] uppercase tracking-wider text-slate-400">
+            <span>{projects.length} project{projects.length === 1 ? "" : "s"}</span>
+            <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-grass-500" />
+              {withPrd} with PRD
+            </span>
           </p>
-        </div>
-        {!creating && (
-          <Button onClick={() => setCreating(true)}>
-            <Plus size={16} strokeWidth={2.5} /> New project
-          </Button>
         )}
-      </div>
+      </PageHeader>
 
       {/* The create form appears in place, above the list. */}
       {creating && (
@@ -86,64 +101,69 @@ export default function Dashboard() {
           title="Couldn't load your projects"
           description={apiErrorMessage(error, "Please try again.")}
         />
-      ) : projects.length === 0 && !creating ? (
-        <EmptyState
-          title="No projects yet"
-          description="Create your first project to generate a PRD with AI."
-          action={<Button onClick={() => setCreating(true)}>Create a project</Button>}
-        />
+      ) : projects.length === 0 ? (
+        !creating && (
+          <EmptyState
+            title="No projects yet"
+            description="Create your first project to generate a PRD with AI."
+            action={
+              <Button onClick={() => setCreating(true)}>
+                <Plus size={16} strokeWidth={2.5} /> Create a project
+              </Button>
+            }
+          />
+        )
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <button
-              key={project.id}
-              onClick={() => navigate(`/projects/${project.id}`)}
-              className="card card-hover group flex flex-col gap-3 p-5 text-left"
-            >
+            // The card is a positioned container: a full-size Link covers it, and the delete
+            // button sits above that link — so we never nest one interactive element in another.
+            <div key={project.id} className="card card-hover group relative flex flex-col gap-4 p-5">
               <div className="flex items-start justify-between gap-2">
                 <span className="logo-mark h-10 w-10">
                   <FileText size={18} strokeWidth={1.75} />
                 </span>
                 {/* has_prd is computed by the backend so we can badge it without an extra call. */}
                 {project.has_prd ? (
-                  <span className="badge bg-grass-100 text-grass-700 dark:bg-grass-500/10 dark:text-grass-300">
+                  <span className="badge badge-success">
                     <span className="h-1.5 w-1.5 rounded-full bg-grass-500" /> PRD ready
                   </span>
                 ) : (
-                  <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                    Draft
-                  </span>
+                  <span className="badge badge-neutral">Draft</span>
                 )}
               </div>
-              <div>
-                <h2 className="font-semibold text-heading group-hover:text-brand-600 dark:group-hover:text-brand-400">
-                  {project.title}
+              <div className="min-w-0">
+                <h2 className="truncate font-semibold text-heading">
+                  <Link
+                    to={`/projects/${project.id}`}
+                    className="after:absolute after:inset-0 after:rounded-xl focus:outline-none"
+                  >
+                    {project.title}
+                  </Link>
                 </h2>
                 <p className="mt-1 line-clamp-2 text-sm text-muted">{project.description}</p>
               </div>
-              <div className="mt-auto flex items-center justify-between pt-2">
-                <span className="text-sm font-medium text-brand-600 group-hover:translate-x-0.5 group-hover:transition">
-                  Open →
+              <div className="rule mt-auto flex items-center justify-between pt-3">
+                <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">
+                  {dateFormat.format(new Date(project.created_at))}
                 </span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(project);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.stopPropagation();
-                      handleDelete(project);
-                    }
-                  }}
-                  className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600"
-                >
-                  Delete
+                <span className="flex items-center gap-1">
+                  <Button
+                    variant="ghost-danger"
+                    size="sm"
+                    className="relative z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                    aria-label={`Delete ${project.title}`}
+                    onClick={() => handleDelete(project)}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                  <ArrowRight
+                    size={16}
+                    className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-grass-500 dark:text-slate-600"
+                  />
                 </span>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

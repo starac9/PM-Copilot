@@ -5,12 +5,13 @@
 // reports which uploaded docs grounded it (RAG). The project title/tabs come from ProjectHeader.
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { AlertTriangle, RefreshCw, Search, Sparkles } from "lucide-react";
 
 import { apiErrorMessage } from "../api/client.js";
 import Button from "../components/Button.jsx";
 import DocumentUpload from "../components/DocumentUpload.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { SectionHeader } from "../components/PageHeader.jsx";
 import ProjectHeader from "../components/ProjectHeader.jsx";
 import { PrdSkeleton } from "../components/Skeleton.jsx";
 import PrdViewer from "../components/prd/PrdViewer.jsx";
@@ -23,7 +24,7 @@ export default function ProjectView() {
   // Filenames that grounded the last generation (from the X-Context-Documents header).
   const [contextDocs, setContextDocs] = useState([]);
 
-  const { data: prd, isLoading } = usePrd(projectId);
+  const { data: prd, isLoading, isError, error } = usePrd(projectId);
   const generatePrd = useGeneratePrd(projectId);
 
   async function handleGenerate() {
@@ -39,44 +40,57 @@ export default function ProjectView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <ProjectHeader projectId={projectId} />
 
       <DocumentUpload projectId={projectId} />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-heading">Product Requirements Document</h2>
-          {contextDocs.length > 0 && (
-            <p className="flex items-center gap-1.5 text-xs text-brand-600 dark:text-brand-400">
-              <Search size={13} strokeWidth={2} />
-              Grounded in {contextDocs.length} document
-              {contextDocs.length > 1 ? "s" : ""}: {contextDocs.join(", ")}
-            </p>
-          )}
-        </div>
-        {prd && (
-          <Button variant="secondary" loading={generatePrd.isPending} onClick={handleGenerate}>
-            Regenerate
-          </Button>
-        )}
-      </div>
-
-      {isLoading ? (
-        <PrdSkeleton />
-      ) : prd ? (
-        <PrdViewer projectId={projectId} content={prd} />
-      ) : (
-        <EmptyState
-          title="No PRD yet"
-          description="Generate a structured PRD from this idea using AI."
-          action={
-            <Button loading={generatePrd.isPending} onClick={handleGenerate}>
-              Generate PRD
-            </Button>
+      <section className="space-y-4">
+        <SectionHeader
+          title="Product Requirements Document"
+          description={
+            contextDocs.length > 0 ? (
+              <span className="flex items-center gap-1.5 text-grass-700 dark:text-grass-400">
+                <Search size={13} strokeWidth={2} />
+                Grounded in {contextDocs.length} document{contextDocs.length > 1 ? "s" : ""}:{" "}
+                {contextDocs.join(", ")}
+              </span>
+            ) : (
+              "Problem, personas, metrics, scope, and risks — edit any section inline."
+            )
+          }
+          actions={
+            prd && (
+              <Button variant="secondary" loading={generatePrd.isPending} onClick={handleGenerate}>
+                {!generatePrd.isPending && <RefreshCw size={15} />} Regenerate
+              </Button>
+            )
           }
         />
-      )}
+
+        {isLoading ? (
+          <PrdSkeleton />
+        ) : isError ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load the PRD"
+            description={apiErrorMessage(error, "Please try again in a moment.")}
+          />
+        ) : prd ? (
+          <PrdViewer projectId={projectId} content={prd} />
+        ) : (
+          <EmptyState
+            title="No PRD yet"
+            description="Generate a structured PRD from this idea using AI. Upload reference docs first to ground it in your domain."
+            action={
+              <Button loading={generatePrd.isPending} onClick={handleGenerate}>
+                {!generatePrd.isPending && <Sparkles size={15} />}
+                {generatePrd.isPending ? "Generating…" : "Generate PRD"}
+              </Button>
+            }
+          />
+        )}
+      </section>
     </div>
   );
 }
